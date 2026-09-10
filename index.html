@@ -60,6 +60,9 @@
       const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
       return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
     },
+    async deleteItem(id) {
+      await deleteDoc(doc(db, "items", id));
+   },
     async addItem(data) {
       await addDoc(collection(db, "items"), { ...data, createdAt: Date.now() });
     },
@@ -368,6 +371,17 @@ function BrowseList({ items, myId, onRequest, onCancel , showDone, setShowDone }
  // 🛠️ 전달 완료 항목의 가시성을 조절하는 필터링 로직 구현
   const filteredItems = showDone ? items : items.filter(it => it.status !== "done");
   
+  if (filteredItems.length === 0) return (
+    <div>
+      {/* 🛠️ 완료된 나눔 토글 버튼 배치 */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <button onClick={() => setShowDone(!showDone)} style={{ background: '#ECE4D2', padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 12, color: '#555', fontWeight: 500 }}>
+          {showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
+        </button>
+      </div>
+      <EmptyState icon="📦" text="아직 올라온 나눔이 없어요." sub="첫 나눔을 시작해보세요." />
+    </div>
+  );
 return (
     <div>
       {/* 🛠️ 완료된 나눔 보이기 안보이기 토글 버튼 배치 */}
@@ -377,8 +391,7 @@ return (
         </button>
       </div>
 
-      {filteredItems.length === 0 ? (
-        <EmptyState icon="📦" text="아직 올라온 나눔이 없어요." sub="첫 나눔을 시작해보세요." />
+    
       ) : (
         filteredItems.map((it) => {
           const isMine = it.giverId === myId;

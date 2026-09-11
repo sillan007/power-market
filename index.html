@@ -43,13 +43,12 @@
 
   // ⚠️ 아래 값을 본인의 Firebase 프로젝트 설정(firebaseConfig)으로 반드시 교체하세요.
   const firebaseConfig = {
-    apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
-    authDomain: "power-market-f9573.firebaseapp.com",
-    projectId: "power-market-f9573",
-    storageBucket: "power-market-f9573.firebasestorage.app",
-    messagingSenderId: "1005808106144",
-    appId: "1:1005808106144:web:faef2e17c612833aec67c5",
-    measurementId: "G-59F20MY2ST"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID",
   };
 
   const app = initializeApp(firebaseConfig);
@@ -60,14 +59,14 @@
       const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
       return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
     },
-    async deleteItem(id) {
-      await deleteDoc(doc(db, "items", id));
-   },
     async addItem(data) {
       await addDoc(collection(db, "items"), { ...data, createdAt: Date.now() });
     },
     async updateItem(id, data) {
       await updateDoc(doc(db, "items", id), data);
+    },
+    async deleteItem(id) {
+      await deleteDoc(doc(db, "items", id));
     },
     async requestItem(id, myId) {
       await updateDoc(doc(db, "items", id), { requesters: arrayUnion(myId) });
@@ -147,6 +146,7 @@ function ChurchSharingApp() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [pin, setPin] = useState("");
   const [tab, setTab] = useState("browse");
+  const [showDone, setShowDone] = useState(false);
   const [items, setItems] = useState([]);
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState("");
@@ -231,6 +231,11 @@ function ChurchSharingApp() {
     showToast("선택을 취소했어요.");
   };
   const markDone = async (itemId) => { await fbApi.updateItem(itemId, { status: "done" }); showToast("전달이 완료되었어요."); };
+  const deleteItem = async (itemId) => {
+    if (!window.confirm("이 나눔을 취소하고 삭제할까요? 되돌릴 수 없어요.")) return;
+    await fbApi.deleteItem(itemId);
+    showToast("나눔을 취소했어요.");
+  };
 
   const startNewSeason = async () => {
     const next = await fbApi.startNewSeason(season);
@@ -252,8 +257,9 @@ function ChurchSharingApp() {
   }
 
   const openItems = items.filter((it) => it.status === "open");
-  const matchedVisible = items.filter((it) => it.status === "matched" || it.status === "done");
-  const browseItems = [...openItems, ...matchedVisible].sort((a, b) => b.createdAt - a.createdAt);
+  const matchedItems = items.filter((it) => it.status === "matched");
+  const doneItems = items.filter((it) => it.status === "done");
+  const browseItems = [...openItems, ...matchedItems, ...(showDone ? doneItems : [])].sort((a, b) => b.createdAt - a.createdAt);
   const myItems = items.filter((it) => it.giverId === myId).sort((a, b) => b.createdAt - a.createdAt);
   const requestedItems = items.filter((it) => it.requesters?.includes(myId)).sort((a, b) => b.createdAt - a.createdAt);
 
@@ -262,15 +268,25 @@ function ChurchSharingApp() {
       <Header myId={myId} />
       <TabBar tab={tab} setTab={setTab} counts={{ requested: requestedItems.length, mine: myItems.length }} />
       <div style={{ padding: "18px 18px 40px" }}>
-        {tab === "browse" && <BrowseList items={browseItems} myId={myId} onRequest={requestItem} onCancel={cancelRequest} />}
+        {tab === "browse" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+              <button onClick={() => setShowDone((v) => !v)}
+                style={{ fontSize: 12, padding: "6px 11px", borderRadius: 20, border: "1px solid #DCD3BC", background: showDone ? "#EFE9D8" : "#FDFBF5", color: "#6B6455", fontWeight: 600 }}>
+                {showDone ? "완료 나눔 숨기기" : "완료 나눔 보기"}{doneItems.length ? ` (${doneItems.length})` : ""}
+              </button>
+            </div>
+            <BrowseList items={browseItems} myId={myId} onRequest={requestItem} onCancel={cancelRequest} />
+          </>
+        )}
         {tab === "create" && <CreateForm form={form} setForm={setForm} onSubmit={submitItem} posting={posting} />}
         {tab === "mine" && (
           <MineList items={myItems} openPanel={openPanel} togglePanel={togglePanel}
             pickedReceiver={pickedReceiver} setPickedReceiver={setPickedReceiver}
             pickedDate={pickedDate} setPickedDate={setPickedDate}
-            onConfirm={confirmMatch} onUndo={undoMatch} onDone={markDone} />
+            onConfirm={confirmMatch} onUndo={undoMatch} onDone={markDone} onDelete={deleteItem} />
         )}
-        {tab === "requested" && <RequestedList items={requestedItems} myId={myId} />}
+        {tab === "requested" && <RequestedList items={requestedItems} myId={myId} onCancel={cancelRequest} />}
       </div>
 
       <div style={{ textAlign: "center", padding: "4px 0 24px" }}>
@@ -367,67 +383,45 @@ function StatusTag({ status }) {
   return <span style={{ fontSize: 11, fontWeight: 600, background: s.bg, color: s.fg, padding: "3px 8px", borderRadius: 5, whiteSpace: "nowrap" }}>{s.label}</span>;
 }
 
-function BrowseList({ items, myId, onRequest, onCancel , showDone, setShowDone }) {
- // 🛠️ 전달 완료 항목의 가시성을 조절하는 필터링 로직 구현
-  const filteredItems = showDone ? items : items.filter(it => it.status !== "done");
-  
-  if (filteredItems.length === 0) return (
+function BrowseList({ items, myId, onRequest, onCancel }) {
+  if (items.length === 0) return <EmptyState icon="📦" text="아직 올라온 나눔이 없어요." sub="첫 나눔을 시작해보세요." />;
+  return (
     <div>
-      {/* 🛠️ 완료된 나눔 토글 버튼 배치 */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-        <button onClick={() => setShowDone(!showDone)} style={{ background: '#ECE4D2', padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 12, color: '#555', fontWeight: 500 }}>
-          {showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
-        </button>
-      </div>
-      <EmptyState icon="📦" text="아직 올라온 나눔이 없어요." sub="첫 나눔을 시작해보세요." />
-    </div>
-  );
-return (
-    <div>
-      {/* 🛠️ 완료된 나눔 보이기 안보이기 토글 버튼 배치 */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-        <button onClick={() => setShowDone(!showDone)} style={{ background: '#ECE4D2', padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 12, color: '#555', fontWeight: 500 }}>
-          {showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
-        </button>
-      </div>
-
-    
-      ) : (
-        filteredItems.map((it) => {
-          const isMine = it.giverId === myId;
-          const requested = it.requesters?.includes(myId);
-          return (
-            <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2", opacity: it.status === "done" ? 0.55 : 1 }}>
-              <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 10, background: "#F1ECDD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                  {emojiFor(it.category)}
+      {items.map((it) => {
+        const isMine = it.giverId === myId;
+        const requested = it.requesters?.includes(myId);
+        return (
+          <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2", opacity: it.status === "done" ? 0.55 : 1 }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 10, background: "#F1ECDD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                {emojiFor(it.category)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
+                  <StatusTag status={it.status} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
-                    <StatusTag status={it.status} />
-                  </div>
-                  {it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}</div>}
-                  <div style={{ fontSize: 11.5, color: "#A39C8C", marginBottom: 8 }}>
-                    {labelFor(it.category)} · {it.status === "open" ? `신청 ${it.requesters?.length || 0}명` : it.status === "matched" ? `${fmtDate(it.dropOffDate)} 전달 예정` : "전달 완료"}
-                  </div>
-                  {!isMine && it.status === "open" && (
-                    requested ? (
-                      <button onClick={() => onCancel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#F6F2E8", color: "#6B6455", fontWeight: 600 }}>신청 취소하기</button>
-                    ) : (
-                      <button onClick={() => onRequest(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받고 싶어요</button>
-                    )
-                  )}
-                  {isMine && <div style={{ fontSize: 12, color: "#A39C8C" }}>내가 올린 나눔이에요</div>}
+                {it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}</div>}
+                <div style={{ fontSize: 11.5, color: "#A39C8C", marginBottom: 8 }}>
+                  {labelFor(it.category)} · {it.status === "open" ? `신청 ${it.requesters?.length || 0}명` : it.status === "matched" ? `${fmtDate(it.dropOffDate)} 전달 예정` : "전달 완료"}
                 </div>
+                {!isMine && it.status === "open" && (
+                  requested ? (
+                    <button onClick={() => onCancel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#F6F2E8", color: "#6B6455", fontWeight: 600 }}>신청 취소하기</button>
+                  ) : (
+                    <button onClick={() => onRequest(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받고 싶어요</button>
+                  )
+                )}
+                {isMine && <div style={{ fontSize: 12, color: "#A39C8C" }}>내가 올린 나눔이에요</div>}
               </div>
             </div>
-          );
-        })
-      )}
+          </div>
+        );
+      })}
     </div>
   );
 }
+
 function CreateForm({ form, setForm, onSubmit, posting }) {
   return (
     <div>
@@ -461,91 +455,81 @@ function CreateForm({ form, setForm, onSubmit, posting }) {
   );
 }
 
-function MineList({ 
-  items, openPanel, togglePanel, pickedReceiver, setPickedReceiver, 
-  pickedDate, setPickedDate, onConfirm, onUndo, onDone, onCancelItem 
-}) {
+function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedReceiver, pickedDate, setPickedDate, onConfirm, onUndo, onDone, onDelete }) {
   if (items.length === 0) return <EmptyState icon="🎁" text="아직 올린 나눔이 없어요." sub="나눔하기 탭에서 첫 나눔을 올려보세요." />;
   return (
     <div>
       {items.map((it) => (
         <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
-            <StatusTag status={it.status} />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
+              <StatusTag status={it.status} />
+            </div>
+            {it.status !== "done" && (
+              <button onClick={() => onDelete(it.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: "1px solid #E3C9BE", background: "none", color: "#B5432F" }}>
+                나눔취소
+              </button>
+            )}
           </div>
-          
-          {/* 1. 나눔중(open) 상태일 때 */}
           {it.status === "open" && (
             <>
               <div style={{ fontSize: 12.5, color: "#77715F", marginBottom: 10 }}>
                 {it.requesters?.length ? `${it.requesters.length}명이 받고 싶어해요` : "아직 신청한 분이 없어요"}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {it.requesters?.length > 0 && !openPanel[it.id] && (
-                  <button onClick={() => togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받을 분 선택하기 ›</button>
-                )}
-                {/* 🛠️ 물품등록 취소 버튼 추가 */}
-                <button onClick={() => onCancelItem(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #E0D3C1", background: "#FAF6EE", color: "#A34B4B", fontWeight: 600 }}>
-                  나눔 취소하기
-                </button>
-              </div>
-
-              {/* 매칭 패널 활성화 시 */}
-              {openPanel[it.id] && it.requesters?.length > 0 && (
-                <div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14, marginTop: 10 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>받으실 분을 골라주세요</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
-                    {it.requesters.map((r) => {
-                      const isPicked = pickedReceiver[it.id] === r;
-                      return (
-                        <button key={r} onClick={() => setPickedReceiver((p) => ({ ...p, [it.id]: r }))}
-                          style={{ padding: "6px 11px", borderRadius: 6, border: isPicked ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: isPicked ? "#EAF0E3" : "#FDFBF5", color: isPicked ? "#4C5C3E" : "#6B6455", fontSize: 12.5, fontWeight: 600 }}>
-                          {r}
+              {it.requesters?.length > 0 && (
+                <div>
+                  {!openPanel[it.id] ? (
+                    <button onClick={() => togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받을 분 선택하기 ›</button>
+                  ) : (
+                    <div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>받으실 분을 골라주세요</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
+                        {it.requesters.map((r) => (
+                          <button key={r} onClick={() => setPickedReceiver((p) => ({ ...p, [it.id]: r }))}
+                            style={{ padding: "7px 12px", borderRadius: 20, border: pickedReceiver[it.id] === r ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: pickedReceiver[it.id] === r ? "#EAF0E3" : "#FDFBF5", color: pickedReceiver[it.id] === r ? "#4C5C3E" : "#6B6455", fontSize: 13, fontWeight: 600 }}>
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>행정실에 갖다 놓으실 날짜</div>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                        <input type="date" min={todayISO()} value={pickedDate[it.id] || ""} onChange={(e) => setPickedDate((p) => ({ ...p, [it.id]: e.target.value }))}
+                          style={{ flex: 1, padding: "9px 10px", borderRadius: 7, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 13.5 }} />
+                        <button onClick={() => setPickedDate((p) => ({ ...p, [it.id]: tomorrowISO() }))}
+                          style={{ padding: "9px 12px", borderRadius: 7, border: "1px solid #DCD3BC", background: "#FDFBF5", color: "#6B6455", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}>
+                          내일로 자동선택
                         </button>
-                      );
-                    })}
-                  </div>
-                  
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>전달 날짜 지정</div>
-                  <input type="date" value={pickedDate[it.id] || ""} onChange={(e) => setPickedDate((p) => ({ ...p, [it.id]: e.target.value }))}
-                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #DCD3BC", marginBottom: 12, fontSize: 13.5 }} />
-                  
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => onConfirm(it.id)} style={{ flex: 1, padding: "9px", borderRadius: 7, border: "none", background: "#4C5C3E", color: "white", fontSize: 13, fontWeight: 600 }}>확정하기</button>
-                    <button onClick={() => togglePanel(it.id)} style={{ padding: "9px 14px", borderRadius: 7, border: "1px solid #C4B9A3", background: "none", color: "#6B6455", fontSize: 13 }}>닫기</button>
-                  </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => onConfirm(it.id)} style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 700, fontSize: 13.5 }}>이 분으로 확정할게요</button>
+                        <button onClick={() => togglePanel(it.id)} style={{ padding: "10px 14px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>닫기</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>
           )}
-
-          {/* 2. 전달 예정(matched) 상태일 때 */}
           {it.status === "matched" && (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 13.5, color: "#2A2823", marginBottom: 8 }}>
-                🎉 <strong>{it.selectedReceiverId}</strong> 님과 매칭되었어요. ({fmtDate(it.dropOffDate)} 전달)
+            <div style={{ background: "#F8F2DD", borderRadius: 10, padding: 13 }}>
+              <div style={{ fontSize: 13.5, color: "#5C5745", marginBottom: 10, lineHeight: 1.6 }}>
+                <strong>{it.selectedReceiverId}</strong>님에게 전달돼요.<br />📅 {fmtDate(it.dropOffDate)}에 행정실에 놓아주세요.
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => onDone(it.id)} style={{ fontSize: 12.5, padding: "6px 12px", borderRadius: 6, border: "none", background: "#7A6420", color: "white", fontWeight: 600 }}>전달 완료 처리</button>
-                <button onClick={() => onUndo(it.id)} style={{ fontSize: 12.5, padding: "6px 12px", borderRadius: 6, border: "1px solid #DCD3BC", background: "white", color: "#777" }}>매칭 취소</button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => onDone(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontSize: 12.5, fontWeight: 600 }}>전달 완료했어요</button>
+                <button onClick={() => onUndo(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 12.5 }}>다시 선택하기</button>
               </div>
             </div>
           )}
-
-          {/* 3. 전달 완료(done) 상태일 때 */}
-          {it.status === "done" && (
-            <div style={{ fontSize: 13, color: "#A39C8C", marginTop: 4 }}>
-              {it.selectedReceiverId} 님에게 전달이 완료된 따뜻한 나눔입니다.
-            </div>
-          )}
+          {it.status === "done" && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>✅ {it.selectedReceiverId}님에게 잘 전달됐어요.</div>}
         </div>
       ))}
     </div>
   );
 }
 
-function RequestedList({ items, myId }) {
+function RequestedList({ items, myId, onCancel }) {
   if (items.length === 0) return <EmptyState icon="📥" text="신청한 나눔이 없어요." sub="둘러보기에서 받고 싶은 물건을 찾아보세요." />;
   return (
     <div>
@@ -554,9 +538,16 @@ function RequestedList({ items, myId }) {
         const decided = it.status === "matched" || it.status === "done";
         return (
           <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 20 }}>{emojiFor(it.category)}</span>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 20 }}>{emojiFor(it.category)}</span>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
+              </div>
+              {!decided && (
+                <button onClick={() => onCancel(it.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: "1px solid #DCD3BC", background: "none", color: "#8B8577" }}>
+                  요청취소
+                </button>
+              )}
             </div>
             {!decided && <div style={{ fontSize: 12.5, color: "#8B8577" }}>🕐 나누시는 분이 아직 고르고 계세요</div>}
             {decided && selected && (

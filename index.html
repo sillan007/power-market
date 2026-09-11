@@ -118,7 +118,7 @@ const CATEGORIES = [
   { key: "etc", label: "기타", emoji: "🎁" },
 ];
 const ID_PREFIX = "선민";
-const ADMIN_PIN = "0000"; // 관리자 암호 - 실제 사용 전 꼭 바꿔주세요
+const ADMIN_PIN = "2123"; // 관리자 암호 - 실제 사용 전 꼭 바꿔주세요
 
 function emojiFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.emoji || "🎁"; }
 function labelFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.label || "기타"; }
@@ -493,7 +493,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
                           </button>
                         ))}
                       </div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>행정실에 갖다 놓으실 날짜</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>교사실에 갖다 놓으실 날짜</div>
                       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                         <input type="date" min={todayISO()} value={pickedDate[it.id] || ""} onChange={(e) => setPickedDate((p) => ({ ...p, [it.id]: e.target.value }))}
                           style={{ flex: 1, padding: "9px 10px", borderRadius: 7, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 13.5 }} />
@@ -515,7 +515,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
           {it.status === "matched" && (
             <div style={{ background: "#F8F2DD", borderRadius: 10, padding: 13 }}>
               <div style={{ fontSize: 13.5, color: "#5C5745", marginBottom: 10, lineHeight: 1.6 }}>
-                <strong>{it.selectedReceiverId}</strong>님에게 전달돼요.<br />📅 {fmtDate(it.dropOffDate)}에 행정실에 놓아주세요.
+                <strong>{it.selectedReceiverId}</strong>님에게 전달돼요.<br />📅 {fmtDate(it.dropOffDate)}에 담임선생님께 전달해 주세요.
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => onDone(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontSize: 12.5, fontWeight: 600 }}>전달 완료했어요</button>
@@ -553,7 +553,7 @@ function RequestedList({ items, myId, onCancel }) {
             {!decided && <div style={{ fontSize: 12.5, color: "#8B8577" }}>🕐 나누시는 분이 아직 고르고 계세요</div>}
             {decided && selected && (
               <div style={{ fontSize: 13, color: "#4C5C3E", fontWeight: 600 }}>
-                {it.status === "done" ? "이미 전달받으셨어요." : `${fmtDate(it.dropOffDate)}에 행정실에서 받으실 수 있어요.`}
+                {it.status === "done" ? "이미 전달받으셨어요." : `${fmtDate(it.dropOffDate)}에 교사실에서 받으실 수 있어요.`}
               </div>
             )}
             {decided && !selected && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>이번에는 다른 분이 받게 되었어요.</div>}

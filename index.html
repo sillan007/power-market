@@ -43,7 +43,7 @@
 
   // ⚠️ 아래 값을 본인의 Firebase 프로젝트 설정(firebaseConfig)으로 반드시 교체하세요.
   const firebaseConfig = {
-     apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
+    apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
     authDomain: "power-market-f9573.firebaseapp.com",
     projectId: "power-market-f9573",
     storageBucket: "power-market-f9573.firebasestorage.app",
@@ -170,6 +170,7 @@ function ChurchSharingApp() {
   const [items, setItems] = useState([]);
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState("");
+  const [initError, setInitError] = useState("");
   const toastTimer = useRef(null);
 
   const [form, setForm] = useState({ title: "", desc: "", category: "living", type: "give" });
@@ -188,38 +189,42 @@ function ChurchSharingApp() {
   useEffect(() => {
     let unsub = null;
     (async () => {
-      const fb = await waitForFb();
-      setFbApi(fb);
-
-      const currentSeason = await fb.getSeason();
-      let id = null;
       try {
-        const raw = localStorage.getItem("my-anon-id");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.season === currentSeason) id = parsed.id;
+        const fb = await waitForFb();
+        setFbApi(fb);
+
+        const currentSeason = await fb.getSeason();
+        let id = null;
+        try {
+          const raw = localStorage.getItem("my-anon-id");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.season === currentSeason) id = parsed.id;
+          }
+        } catch (e) {}
+        if (!id) {
+          const n = await fb.nextId(currentSeason);
+          id = `${ID_PREFIX}${n}`;
+          localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
         }
-      } catch (e) {}
-      if (!id) {
-        const n = await fb.nextId(currentSeason);
-        id = `${ID_PREFIX}${n}`;
-        localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
-      }
 
-      await fb.ensureUser(id, currentSeason);
-      const userDoc = await fb.getUserDoc(id);
+        await fb.ensureUser(id, currentSeason);
+        const userDoc = await fb.getUserDoc(id);
 
-      setMyId(id);
-      setSeason(currentSeason);
+        setMyId(id);
+        setSeason(currentSeason);
 
-      if (userDoc?.banned) {
-        setBlocked(true);
-        setReady(true);
-        return;
-      }
+        if (userDoc?.banned) {
+          setBlocked(true);
+          setReady(true);
+          return;
+        }
 
-      if (!cancelled) {
         unsub = fb.watchItems((list) => setItems(list));
+        setReady(true);
+      } catch (err) {
+        console.error(err);
+        setInitError(err?.message || String(err));
         setReady(true);
       }
     })();
@@ -308,6 +313,18 @@ function ChurchSharingApp() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, gap: 12, color: "#8b8577" }}>
           <span style={{ fontSize: 26 }}>🎁</span>
           <div style={{ fontSize: 14 }}>자리를 준비하고 있어요…</div>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (initError) {
+    return (
+      <Shell>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 360, gap: 10, color: "#8b8577", padding: 30, textAlign: "center" }}>
+          <span style={{ fontSize: 26 }}>⚠️</span>
+          <div style={{ fontSize: 14, color: "#6B6455" }}>불러오는 중 문제가 생겼어요.</div>
+          <div style={{ fontSize: 12, color: "#A39C8C", wordBreak: "break-all" }}>{initError}</div>
         </div>
       </Shell>
     );
@@ -434,7 +451,7 @@ function ChurchSharingApp() {
                   <div key={it.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "9px 0", borderBottom: "1px solid #ECE4D2" }}>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
-                      <div style={{ fontSize: 11, color: "#A39C8C" }}>{it.type === "want" ? "요청" : "나눔"} · {it.giverId} · {it.status === "open" ? "진행중" : it.status === "matched" ? "나눔예정" : "완료"}</div>
+                      <div style={{ fontSize: 11, color: "#A39C8C" }}>{it.type === "want" ? "요청" : "나눔"} · {it.giverId} · {it.status === "open" ? "진행중" : it.status === "matched" ? "전달예정" : "완료"}</div>
                     </div>
                     <button onClick={() => adminDeleteItem(it.id)} style={{ fontSize: 11.5, padding: "5px 9px", borderRadius: 6, border: "1px solid #E3C9BE", background: "none", color: "#B5432F", flexShrink: 0 }}>
                       삭제
@@ -536,8 +553,8 @@ function TypeTag({ type }) {
 function StatusTag({ status }) {
   const map = {
     open: { label: "나눔중", bg: "#EAF0E3", fg: "#4C5C3E" },
-    matched: { label: "전달 예정", bg: "#F3E9C9", fg: "#7A6420" },
-    done: { label: "전달 완료", bg: "#EFEAE0", fg: "#8B8577" },
+    matched: { label: "나눔 예정", bg: "#F3E9C9", fg: "#7A6420" },
+    done: { label: "나눔 완료", bg: "#EFEAE0", fg: "#8B8577" },
   };
   const s = map[status] || map.open;
   return <span style={{ fontSize: 11, fontWeight: 600, background: s.bg, color: s.fg, padding: "3px 8px", borderRadius: 5, whiteSpace: "nowrap" }}>{s.label}</span>;
@@ -708,7 +725,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
                   <><strong>{it.selectedReceiverId}</strong>님이 주시기로 했어요.</>
                 ) : (
                   <><strong>{it.selectedReceiverId}</strong>님에게 전달돼요.</>
-                )}<br />📅 {fmtDate(it.dropOffDate)}에 신입반실에서 찾으세요.
+                )}<br />📅 {fmtDate(it.dropOffDate)}에 신입반실에서 만나요.
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => onDone(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontSize: 12.5, fontWeight: 600 }}>나눔 완료했어요</button>
@@ -716,7 +733,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
               </div>
             </div>
           )}
-          {it.status === "done" && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>✅ {it.selectedReceiverId}님과 잘 마무리됐어요.</div>}
+          {it.status === "done" && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>✅ {it.selectedReceiverId}님과 잘 나눔했어요.</div>}
         </div>
       ))}
     </div>

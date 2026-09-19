@@ -532,7 +532,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
                           </button>
                         ))}
                       </div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>행정실에서 주고받을 날짜</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>신입반실에서 주고받을 날짜</div>
                       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                         <input type="date" min={todayISO()} value={pickedDate[it.id] || ""} onChange={(e) => setPickedDate((p) => ({ ...p, [it.id]: e.target.value }))}
                           style={{ flex: 1, padding: "9px 10px", borderRadius: 7, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 13.5 }} />
@@ -558,7 +558,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
                   <><strong>{it.selectedReceiverId}</strong>님이 주시기로 했어요.</>
                 ) : (
                   <><strong>{it.selectedReceiverId}</strong>님에게 전달돼요.</>
-                )}<br />📅 {fmtDate(it.dropOffDate)}에 행정실에서 만나요.
+                )}<br />📅 {fmtDate(it.dropOffDate)}에 신입반실에서 만나요.
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => onDone(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontSize: 12.5, fontWeight: 600 }}>전달 완료했어요</button>
@@ -600,8 +600,8 @@ function RequestedList({ items, myId, onCancel }) {
                 {it.status === "done"
                   ? "이미 마무리됐어요."
                   : it.type === "want"
-                  ? `${fmtDate(it.dropOffDate)}에 행정실에 가져다 주시면 돼요.`
-                  : `${fmtDate(it.dropOffDate)}에 행정실에서 받으실 수 있어요.`}
+                  ? `${fmtDate(it.dropOffDate)}에 신입반실에 가져다 주시면 돼요.`
+                  : `${fmtDate(it.dropOffDate)}에 신입반실에서 받으실 수 있어요.`}
               </div>
             )}
             {decided && !selected && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>{it.type === "want" ? "이번에는 다른 분이 나눔하기로 했어요." : "이번에는 다른 분이 받게 되었어요."}</div>}

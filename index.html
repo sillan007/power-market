@@ -1,114 +1,75 @@
-<!-- 파이어베이스 모듈 스크립트 결속 연동 및 API 바인딩 -->
-<script type="module">
-  import { initializeApp } from "https://gstatic.com";
-  import {
-    getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc,
-    onSnapshot, query, orderBy, runTransaction, getDocs, deleteDoc,
-    arrayUnion, arrayRemove,
-  } from "https://gstatic.com";
-  import {
-    getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject
-  } from "https://gstatic.com";
+<!--
+  나눔의 자리 - 교회 나눔 웹앱 (특수 기호 충돌 완전 해결 완벽 구동판)
+  
+  사용 방법:
+  1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>나눔의 자리</title>
+<link rel="preconnect" href="https://googleapis.com">
+<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #EDE7D6; }
+  body { font-family: 'Noto Sans KR', -apple-system, sans-serif; color: #2A2823; }
+  button { font-family: inherit; cursor: pointer; border: none; transition: opacity 0.2s; }
+  button:active { opacity: 0.7; }
+  input, textarea { font-family: inherit; outline: none; }
+  
+  #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FAF6EE; box-shadow: 0 0 0 1px #ECE4D2; position: relative; padding-bottom: 80px; }
+  .header-bar { background: #8B7E66; color: white; padding: 24px 20px; text-align: center; }
+  .header-title { margin: 0; font-size: 22px; font-family: 'Noto Serif KR', serif; }
+  .header-info { font-size: 13px; opacity: 0.85; margin-top: 5px; }
+  
+  .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
+  .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
+  .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
+  
+  .content-area { padding: 20px 16px; }
+  .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+  .card-top { margin-bottom: 6px; display: flex; align-items: center; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
+  .badge.open { background: #EAF0E3; color: #4C5C3E; }
+  .badge.matched { background: #F3E9C9; color: #7A6420; }
+  
+  .form-group { margin-bottom: 18px; }
+  .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
+  .form-input { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14.5px; }
+  .form-textarea { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14px; resize: none; line-height: 1.5; }
+  
+  .action-btn { width: 100%; padding: 13px; border-radius: 9px; background: #5C6E4B; color: #F6F2E8; font-size: 15px; font-weight: 700; text-align: center; }
+  .cancel-btn { background: #FAF6EE; color: #B34A4A; border: 1px solid #D8CFB8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
+  .select-btn { background: #5C6E4B; color: #F6F2E8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
+  
+  .admin-panel-box { margin: 0; padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
+  .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
+  .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+  
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 9999; display: none; }
+</style>
+</head>
+<body>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
-    authDomain: "://firebaseapp.com",
-    projectId: "power-market-f9573",
-    storageBucket: "power-market-f9573.firebasestorage.app",
-    messagingSenderId: "1005808106144",
-    appId: "1:1005808106144:web:faef2e17c612833aec67c5",
-    measurementId: "G-59F20MY2ST"
-  };
+<div id="root">
+  <div class="header-bar">
+    <h1 class="header-title">나눔의 자리</h1>
+    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">로딩중...</span> · 시즌 <span id="display-season">1</span></div>
+  </div>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const storage = getStorage(app);
+  <div class="tab-container">
+    <button class="tab-btn active" id="tab-browse-btn" onclick="switchTab('browse')">둘러보기</button>
+    <button class="tab-btn" id="tab-share-btn" onclick="switchTab('share')">나눔하기</button>
+    <button class="tab-btn" id="tab-mine-btn" onclick="switchTab('mine')">나의 나눔</button>
+  </div>
 
-  window.fb = {
-    watchItems(cb) {
-      const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
-      return onSnapshot(q, function(snap) {
-        cb(snap.docs.map(function(d) { return { id: d.id, ...d.data() }; }));
-      });
-    },
-    async addItem(data) {
-      await addDoc(collection(db, "items"), { ...data, createdAt: Date.now() });
-    },
-    async updateItem(id, data) {
-      await updateDoc(doc(db, "items", id), data);
-    },
-    async deleteItem(id, imagePath) {
-      await deleteDoc(doc(db, "items", id));
-      if (imagePath) {
-        try {
-          await deleteObject(sRef(storage, imagePath));
-        } catch (e) {
-          console.error("Storage 이미지 삭제 실패:", e);
-        }
-      }
-    },
-    async uploadImage(file, myId) {
-      const imagePath = 'items/' + Date.now() + '_' + myId;
-      const fileRef = sRef(storage, imagePath);
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-      return { url: url, imagePath: imagePath };
-    },
-    async requestItem(id, myId) {
-      await updateDoc(doc(db, "items", id), { requesters: arrayUnion(myId) });
-    },
-    async cancelRequest(id, myId) {
-      await updateDoc(doc(db, "items", id), { requesters: arrayRemove(myId) });
-    },
-    async getSeason() {
-      const ref = doc(db, "meta", "season");
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        await setDoc(ref, { value: 1 });
-        return 1;
-      }
-      return snap.data().value || 1;
-    },
-    async nextId(season) {
-      const ref = doc(db, "meta", 'counter-' + season);
-      return runTransaction(db, async function(tx) {
-        const snap = await tx.get(ref);
-        const current = snap.exists() ? snap.data().value || 0 : 0;
-        const next = current + 1;
-        tx.set(ref, { value: next });
-        return next;
-      });
-    },
-    async startNewSeason(currentSeason) {
-      const nextSeason = currentSeason + 1;
-      await setDoc(doc(db, "meta", "season"), { value: nextSeason });
-      const snap = await getDocs(collection(db, "items"));
-      await Promise.all(snap.docs.map(function(d) { return deleteDoc(d.ref); }));
-      return nextSeason;
-    },
-    async getBlockedUsers() {
-      const ref = doc(db, "meta", "blocked-users");
-      const snap = await getDoc(ref);
-      if (!snap.exists()) return [];
-      return snap.data().list || [];
-    },
-    async blockUser(userId) {
-      const ref = doc(db, "meta", "blocked-users");
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        await setDoc(ref, { list: [userId] });
-      } else {
-        await updateDoc(ref, { list: arrayUnion(userId) });
-      }
-    },
-    async unblockUser(userId) {
-      const ref = doc(db, "meta", "blocked-users");
-      await updateDoc(ref, { list: arrayRemove(userId) });
-    }
-  };
-  window.__fbReady = true;
-  if (window.__fbCallback) window.__fbCallback();
-</script>
+  <div class="content-area" id="content-container"></div>
+</div>
+
+<div id="toast-message" class="toast"></div>
 <!-- 파이어베이스 모듈 스크립트 결속 연동 및 API 바인딩 -->
 <script type="module">
   import { initializeApp } from "https://gstatic.com";
@@ -315,7 +276,7 @@
 
   function switchTab(tabName) {
     if (tabName === 'admin' && !isAdminAuthed) {
-      const inputPin = prompt("관리자 비밀번호를 입력하세요:");
+      const inputPin = prompt("관리자 비밀번호를 입력하세요 (초기 비번: 1234):");
       if (!inputPin) return;
       fbApi.getAdminPin().then(function(realPin) {
         if (inputPin === realPin) {
@@ -524,7 +485,7 @@
         html += '  <div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록된 게시물이 존재하지 않습니다.</div>';
       } else {
         allItems.forEach(function(it) {
-          const imgSign = it.image ? ' 🖼️' : '';
+          const imgSign = it.image ? " 🖼️" : "";
           html += '  <div class="admin-list-item">';
           html += '    <div style="min-width:0; flex:1; padding-right:8px;">';
           html += '      <strong>' + it.title + '</strong>' + imgSign + '<br/>';

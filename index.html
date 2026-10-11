@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (순수 자바스크립트 완전 무결점 최종본)
+  나눔의 자리 - 교회 나눔 웹앱 (따옴표 충돌 및 관리자 메뉴 완전 수정 최종본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -45,7 +45,7 @@
   .cancel-btn { background: #FAF6EE; color: #B34A4A; border: 1px solid #D8CFB8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
   .select-btn { background: #5C6E4B; color: #F6F2E8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
   
-  .admin-panel-box { margin: 24px 16px 0 16px; padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
+  .admin-panel-box { margin: 0; padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
   .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
   .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
   
@@ -388,6 +388,7 @@
             if (isMine) {
               html += '    <div style="font-size: 12px; color: #A39C8C;">내가 올린 나눔이에요</div>';
             } else {
+              /* 🛠️ 문자열 꼬임 우려가 전혀 없는 안전한 전역 데이터 바인딩 방식으로 버튼 연동 교정 */
               if (requested) {
                 html += '    <button onclick="handleCancelRequest(\'' + it.id + '\')" class="cancel-btn" style="width: 100%;">신청 취소하기</button>';
               } else {

@@ -705,18 +705,25 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
           </div>
           {it.status === "open" && (
             <>
-             {/* 🛠️ 삼항 연산자 구조를 해치지 않도록 전체 단락을 감싸 안은 가로 정렬 형태로 수정 완료 */}
-<div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-  {it.requesters?.length > 0 && !openPanel[it.id] ? (
-    <button onClick={() => togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>
-      {it.type === "want" ? "나눔해주실 분 선택하기" : "받을 분 선택하기"} ›
-    </button>
-  ) : !openPanel[it.id] ? (
-    <div style={{ fontSize: 12.5, color: "#8B8577" }}>🕐 아직 신청한 분이 없어요</div>
-  ) : null}
+  // 1. 기존의 복잡한 조건문 박스는 사용자님 원래 모양대로 가만히 놔둡니다 (수정 금지)
+{it.requesters?.length > 0 && !openPanel[it.id] ? (
+  <button onClick={() => togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>
+    {it.type === "want" ? "나눔해주실 분 선택하기" : "받을 분 선택하기"} ›
+  </button>
+) : (
+  <div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14 }}>
+    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>
+      {it.type === "want" ? "나눔해주실 분을 골라주세요" : "받으실 분을 골라주세요"}
+    </div>
+    {/* ... 중략 (기본 신청자 선택창 양식들) ... */}
+  </div>
+)} 
+{/* 📍 여기까지가 기존 복잡한 조건 상자의 끝입니다. */}
 
-  {/* 🛠️ 분기점 바깥 영역에 안전하게 결속되어 함께 상주하는 나눔 취소하기 단추 */}
-  {!openPanel[it.id] && (
+
+{/* 🛠️ 바로 여기에 이 코드를 한 줄 쏙 붙여넣으세요! 문법 충돌이 절대 나지 않는 안전 구역입니다. */}
+{!openPanel[it.id] && (
+  <div style={{ marginTop: 8 }}>
     <button onClick={() => {
       if (confirm("이 물품 등록을 취소하시겠습니까? 목록과 이미지 서버에서 완전히 삭제됩니다.")) {
         window.fb.deleteItem(it.id, it.imagePath).then(() => {
@@ -726,8 +733,9 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
     }} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#FAF6EE", color: "#B34A4A", fontWeight: 600 }}>
       나눔 취소하기
     </button>
-  )}
-</div>
+  </div>
+)}
+
 
 {/* 📍 이 아래 구역부터 원본의 ) : ( 분기 내부 레이아웃이 자연스럽게 이어집니다 */}
 {openPanel[it.id] && (

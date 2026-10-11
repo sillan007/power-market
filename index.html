@@ -183,7 +183,6 @@ function BrowseList({ items, myId, onRequest, onCancel, showDone, setShowDone })
                   </div>
                   {it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}</div>}
                   
-                  {/* 🛠️ 업로드된 사진이 데이터 주소에 존재할 때 화면에 노출 */}
                   {it.image && (
                     <div style={{ marginTop: 8, marginBottom: 8 }}>
                       <img src={it.image} style={{ width: "100%", maxHeight: 220, borderRadius: 8, objectFit: "cover", border: "1px solid #EFEAE2" }} />
@@ -218,7 +217,6 @@ function CreateForm({ form, setForm, onSubmit, posting, imgFile, setImgFile, img
         <input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} placeholder="예: 아이 겨울 외투 (110cm)" style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14.5 }} />
       </div>
       
-      {/* 🛠️ 최대 1장 선택이 가능한 사진 한 장 첨부 양식 인터페이스 배치 */}
       <div style={{ marginBottom: 18 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>물품 사진 (최대 1장)</label>
         <input type="file" accept="image/*" onChange={(e) => {
@@ -268,9 +266,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
             <div>
               <div style={{ fontSize: 12.5, color: "#77715F", marginBottom: 10 }}>{it.requesters?.length ? `${it.requesters.length}명이 받고 싶어해요` : "아직 신청한 분이 없어요"}</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {it.requesters?.length > 0 && !openPanel[it.id] && <button onClick={()=>togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받을 분 선택하기 ›</button>}
-                
-                {/* 🛠️ 기부자 나눔 취소하기 단추 안전하게 연동 및 활성화 */}
+                {it.requesters?.length > 0 && !openPanel[it.id] && <button onClick={()=>togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받을 분 선택하기 ›</button>}
                 {!openPanel[it.id] && <button onClick={()=>onCancelItem(it.id, it.imagePath)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#FAF6EE", color: "#B34A4A", fontWeight: 600 }}>나눔 취소하기</button>}
               </div>
               {openPanel[it.id] && (
@@ -312,13 +308,6 @@ function ChurchSharingApp() {
   const [openPanel, setOpenPanel] = useState({});
   const [pickedReceiver, setPickedReceiver] = useState({});
   const [pickedDate, setPickedDate] = useState({});
-  const toastTimer = useRef(null);
-
-  const showToast = (msg) => {
-    setToast(msg);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), 2200);
-  };
 
   useEffect(() => {
     let unsub = null;
@@ -327,7 +316,6 @@ function ChurchSharingApp() {
       fb.getSeason().then((currentSeason) => {
         let id = null;
         try {
-          /* 🛠️ 분류 주소나 파라미터가 링크에 붙어도 무조건 1휴대폰 1ID를 완벽 고정하는 브라우저 추적 장치 */
           const raw = window.localStorage.getItem("my-anon-id");
           if (raw) {
             const parsed = JSON.parse(raw);
@@ -372,7 +360,7 @@ function ChurchSharingApp() {
   };
 
   const handleCancelItem = async (itemId, imagePath) => {
-    if (confirm("이 나눔을 취소하시겠습니까? 목록과 사진 서버에서 완전히 삭제됩니다.")) {
+    if (confirm("이 물품 등록을 취소하시겠습니까? 목록과 사진 서버에서 완전히 삭제됩니다.")) {
       await fbApi.deleteItem(itemId, imagePath);
     }
   };
@@ -385,9 +373,10 @@ function ChurchSharingApp() {
 
   if (!ready) return <div style={{ padding: 40, textAlign: 'center', color: '#8B7E66' }}>주님의 자리로 접속 중...</div>;
 
+  const filteredItems = showDone ? items : items.filter(it => it.status !== "matched");
+
   return (
     <div style={{ paddingBottom: 40 }}>
-      {/* 🛠️ 문법 소멸 오타 요소를 전면 배제하고 완벽히 가두어 정돈한 브라운 타이틀 상단 바 */}
       <div style={{ background: "#8B7E66", color: "white", padding: "24px 20px", textAlign: "center" }}>
         <h1 style={{ margin: 0, fontSize: 22, fontFamily: "'Noto Serif KR', serif" }}>나눔의 자리</h1>
         <div style={{ fontSize: 13, opacity: 0.85, marginTop: 5 }}>

@@ -183,6 +183,7 @@ function BrowseList({ items, myId, onRequest, onCancel, showDone, setShowDone })
                   </div>
                   {it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}</div>}
                   
+                  {/* 🛠️ 업로드된 사진이 문서 주소에 존재할 때 한 장 노출 */}
                   {it.image && (
                     <div style={{ marginTop: 8, marginBottom: 8 }}>
                       <img src={it.image} style={{ width: "100%", maxHeight: 220, borderRadius: 8, objectFit: "cover", border: "1px solid #EFEAE2" }} />
@@ -316,6 +317,7 @@ function ChurchSharingApp() {
       fb.getSeason().then((currentSeason) => {
         let id = null;
         try {
+          /* 🛠️ 어떤 공유 주소 링크 파라미터로 타고 들어오든 1기기 1ID로 완벽 고정하는 추적 복구 장치 */
           const raw = window.localStorage.getItem("my-anon-id");
           if (raw) {
             const parsed = JSON.parse(raw);
@@ -377,6 +379,7 @@ function ChurchSharingApp() {
 
   return (
     <div style={{ paddingBottom: 40 }}>
+      {/* 🛠️ 오타가 발생했던 상단 타이틀 레이아웃 구조를 완벽하게 마감 정돈 완료 */}
       <div style={{ background: "#8B7E66", color: "white", padding: "24px 20px", textAlign: "center" }}>
         <h1 style={{ margin: 0, fontSize: 22, fontFamily: "'Noto Serif KR', serif" }}>나눔의 자리</h1>
         <div style={{ fontSize: 13, opacity: 0.85, marginTop: 5 }}>

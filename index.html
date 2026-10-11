@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (리액트 기반 문법 완전 교정 완치본)
+  나눔의 자리 - 교회 나눔 웹앱 (리액트 스타일 문법 에러 100% 교정 완치본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -360,7 +360,7 @@ function ChurchSharingApp() {
   if (!ready) return <div style={{ padding: 40, textAlign: 'center', color: '#8B7E66' }}>주님의 자리로 접속 중...</div>;
 
   if (blockedUsers.includes(myId)) {
-    return <div style={{ textAnlign: 'center', padding: '40px 20px', color: '#B34A4A', fontWeight: 'bold', textAlign: 'center' }}>🚫 운영자 정책에 의해 이용이 제한된 계정입니다.</div>;
+    return <div style={{ padding: '40px 20px', color: '#B34A4A', fontWeight: 'bold', textAlign: 'center' }}>🚫 운영자 정책에 의해 이용이 제한된 계정입니다.</div>;
   }
 
   const filteredItems = showDone ? items : items.filter(function(it) { return it.status !== 'matched'; });
@@ -420,7 +420,7 @@ function ChurchSharingApp() {
                           <button onClick={function() { handleRequest(it.id); }} class="select-btn" style={{ width: "100%" }}>받고 싶어요 ({(it.requesters && it.requesters.length) || 0}명)</button>
                         )
                       ) : (
-                        <div style={{ background: "#F5F5F5", padding: 8, border_radius: 6, fontSize: 13, color: "#43A047", fontWeight: "bold" }}>
+                        <div style={{ background: "#F5F5F5", padding: 8, borderRadius: 6, fontSize: 13, color: "#43A047", fontWeight: "bold" }}>
                           🎉 {it.selectedReceiverId} 님과 매칭완료!
                         </div>
                       )}
@@ -432,7 +432,7 @@ function ChurchSharingApp() {
           </div>
         )}
         {tab === "share" && (
-          <div style={{ background: 'white', border: '1px solid #EFEAE2', padding: 16, border_radius: 8 }}>
+          <div style={{ background: 'white', border: '1px solid #EFEAE2', padding: 16, borderRadius: 8 }}>
             <h3 style={{ marginTop: 0, color: '#8B7E66' }}>나눔 물품 등록</h3>
             
             <div class="form-group">
@@ -440,7 +440,7 @@ function ChurchSharingApp() {
               <input type="text" value={formTitle} onChange={function(e) { setFormTitle(e.target.value); }} placeholder="예: 아동용 도서 세트" class="form-input" />
             </div>
 
-            {/* 🛠️ 최대 1장의 사진 첨부 및 실시간 미리보기 프리뷰 연동 모듈 */}
+            {/* 🛠️ 최대 1장의 사진 파일만 유효 연동되는 이미지 미리보기 및 핸들러 */}
             <div class="form-group">
               <label class="form-label">물품 사진 (최대 1장)</label>
               <input type="file" accept="image/*" onChange={function(e) {
@@ -496,28 +496,28 @@ function ChurchSharingApp() {
         )}
         {tab === "admin" && (
           <div class="admin-panel-box">
-            <div style={{ display: 'flex', justify_content: 'space-between', align_items: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', jealousy: 'none', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ margin: 0, color: '#8B7E66' }}>⚙️ 원격 통합 운영 관리센터</h3>
-              <button onClick={function() { setTab("browse"); }} class="cancel-btn" style={{ padding: '4px 10px', font_size: 12 }}>나가기</button>
+              <button onClick={function() { setTab("browse"); }} class="cancel-btn" style={{ padding: '4px 10px', fontSize: 12 }}>나가기</button>
             </div>
             
             <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>
-            <button onClick={handleAdminChangePin} class="select-btn" style={{ width: '100%', padding: 10, font_size: 13, margin_bottom: 16 }}>
+            <button onClick={handleAdminChangePin} class="select-btn" style={{ width: '100%', padding: 10, fontSize: 13, marginBottom: 16 }}>
               🔒 마스터 PIN 번호 변경하기
             </button>
             
             <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기 ({items.length}개)</div>
             {items.length === 0 ? (
-              <div style={{ font_size: 12, color: '#999', text_align: 'center', padding: 10 }}>등록된 게시물이 존재하지 않습니다.</div>
+              <div style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: 10 }}>등록된 게시물이 존재하지 않습니다.</div>
             ) : (
               items.map(function(it) {
                 return (
                   <div key={it.id} class="admin-list-item">
-                    <div style={{ min_width: 0, flex: 1, padding_right: 8 }}>
+                    <div style={{ minWidth: 0, flex: 1, paddingRight: 8 }}>
                       <strong>{it.title}</strong>{it.image ? " 🖼️" : ""}<br/>
-                      <span style={{ font_size: 11, color: '#888' }}>작성자: {it.giverId} · 상태: {it.status}</span>
+                      <span style={{ fontSize: 11, color: '#888' }}>작성자: {it.giverId} · 상태: {it.status}</span>
                     </div>
-                    <button onClick={function() { handleAdminForceDelete(it.id, it.imagePath || ""); }} style={{ background: '#B34A4A', color: 'white', font_size: 11, padding: '4px 8px', border_radius: 4 }}>
+                    <button onClick={function() { handleAdminForceDelete(it.id, it.imagePath || ""); }} style={{ background: '#B34A4A', color: 'white', fontSize: 11, padding: '4px 8px', borderRadius: 4 }}>
                       강제삭제
                     </button>
                   </div>
@@ -538,15 +538,15 @@ function ChurchSharingApp() {
               });
 
               if (uniqueUsers.length === 0) {
-                return <div style={{ font_size: 12, color: '#999', text_align: 'center', padding: 10 }}>조회된 유저 네트워크가 비어있습니다.</div>;
+                return <div style={{ fontSize: 12, color: '#999', textAlign: 'center', padding: 10 }}>조회된 유저 네트워크가 비어있습니다.</div>;
               }
 
               return uniqueUsers.map(function(uId) {
                 const isBlocked = blockedUsers.includes(uId);
                 return (
                   <div key={uId} class="admin-list-item">
-                    <span>👤 <strong>{uId}</strong>{isBlocked ? <span style={{ color: '#B34A4A', font_weight: 'bold' }}> [차단됨]</span> : ""}</span>
-                    <button onClick={function() { handleAdminToggleBlock(uId); }} style={{ background: isBlocked ? '#4C5C3E' : '#B34A4A', color: 'white', font_size: 11, padding: '4px 8px', border_radius: 4 }}>
+                    <span>👤 <strong>{uId}</strong>{isBlocked ? <span style={{ color: '#B34A4A', fontWeight: 'bold' }}> [차단됨]</span> : ""}</span>
+                    <button onClick={function() { handleAdminToggleBlock(uId); }} style={{ background: isBlocked ? '#4C5C3E' : '#B34A4A', color: 'white', fontSize: 11, padding: '4px 8px', borderRadius: 4 }}>
                       {isBlocked ? '차단해제' : '유저차단'}
                     </button>
                   </div>
@@ -555,7 +555,7 @@ function ChurchSharingApp() {
             })()}
 
             <div class="admin-sub-title">시즌 마감 및 데이터 마스터 초기화</div>
-            <button onClick={handleAdminDeleteSeason} style={{ background: '#B34A4A', color: 'white', width: '100%', padding: 12, border_radius: 8, font_weight: 'bold', font_size: 13.5, margin_top: 8 }}>
+            <button onClick={handleAdminDeleteSeason} style={{ background: '#B34A4A', color: 'white', width: '100%', padding: 12, borderRadius: 8, fontWeight: 'bold', fontSize: 13.5, marginTop: 8 }}>
               ⚠️ 현재 시즌 종료 및 데이터 전면 초기화
             </button>
           </div>
@@ -566,14 +566,14 @@ function ChurchSharingApp() {
       {showPwdModal && (
         <div class="pwd-modal">
           <div class="pwd-box">
-            <div style={{ font_size: 14, font_weight: 'bold', color: '#5C5745', margin_bottom: 12 }}>🔒 관리자 비밀번호 입력</div>
+            <div style={{ fontSize: 14, fontWeight: 'bold', color: '#5C5745', marginBottom: 12 }}>🔒 관리자 비밀번호 입력</div>
             <input 
               type="password" 
               value={pwdInput} 
               onChange={function(e) { setPwdInput(e.target.value); }} 
               placeholder="비밀번호 입력" 
               class="form-input" 
-              style={{ text_align: 'center', margin_bottom: 14 }} 
+              style={{ textAlign: 'center', marginBottom: 14 }} 
             />
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={submitAdminPassword} class="select-btn" style={{ flex: 1, padding: '8px 0' }}>확인</button>

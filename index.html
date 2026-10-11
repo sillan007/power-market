@@ -1,3 +1,12 @@
+<!--
+  나눔의 자리 - 교회 나눔 웹앱 (Firebase 연동 버전)
+
+  사용 방법
+  1) Firebase 콘솔(://google.com)에서 새 프로젝트 생성 → Firestore Database 및 Storage 사용 설정
+  2) 프로젝트 설정 > 일반 > "내 앱" 에서 웹 앱 추가 후 나오는 firebaseConfig 값을
+     아래 firebaseConfig 객체에 그대로 붙여넣기
+  3) 이 파일을 index.html 이름으로 GitHub 저장소에 업로드 → Settings > Pages 에서 배포
+-->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -23,8 +32,94 @@
 <script src="https://unpkg.com"></script>
 <script src="https://unpkg.com"></script>
 
-<!-- 🛠️ 분리된 외부 백엔드 연동 자바스크립트 모듈 파일 호출 -->
-<script type="module" src="./firebase-config.js"></script>
+<script type="module">
+  import { initializeApp } from "https://gstatic.com";
+  import {
+    getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc,
+    onSnapshot, query, orderBy, runTransaction, getDocs, deleteDoc,
+    arrayUnion, arrayRemove,
+  } from "https://gstatic.com";
+  import {
+    getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject
+  } from "https://gstatic.com";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
+    authDomain: "://firebaseapp.com",
+    projectId: "power-market-f9573",
+    storageBucket: "power-market-f9573.firebasestorage.app",
+    messagingSenderId: "1005808106144",
+    appId: "1:1005808106144:web:faef2e17c612833aec67c5",
+    measurementId: "G-59F20MY2ST"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  window.fb = {
+    watchItems(cb) {
+      const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
+      return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    },
+    async addItem(data) {
+      await addDoc(collection(db, "items"), { ...data, createdAt: Date.now() });
+    },
+    async updateItem(id, data) {
+      await updateDoc(doc(db, "items", id), data);
+    },
+    async deleteItem(id, imagePath) {
+      await deleteDoc(doc(db, "items", id));
+      if (imagePath) {
+        try {
+          await deleteObject(sRef(storage, imagePath));
+        } catch (e) {
+          console.error("이미지 서버 실물 이미지 연동 삭제 실패:", e);
+        }
+      }
+    },
+    async uploadImage(file, myId) {
+      const imagePath = `items/${Date.now()}_${myId}`;
+      const fileRef = sRef(storage, imagePath);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      return { url, imagePath };
+    },
+    async requestItem(id, myId) {
+      await updateDoc(doc(db, "items", id), { requesters: arrayUnion(myId) });
+    },
+    async cancelRequest(id, myId) {
+      await updateDoc(doc(db, "items", id), { requesters: arrayRemove(myId) });
+    },
+    async getSeason() {
+      const ref = doc(db, "meta", "season");
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, { value: 1 });
+        return 1;
+      }
+      return snap.data().value || 1;
+    },
+    async nextId(season) {
+      const ref = doc(db, "meta", `counter-${season}`);
+      return runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const current = snap.exists() ? snap.data().value || 0 : 0;
+        const next = current + 1;
+        tx.set(ref, { value: next });
+        return next;
+      });
+    },
+    async startNewSeason(currentSeason) {
+      const nextSeason = currentSeason + 1;
+      await setDoc(doc(db, "meta", "season"), { value: nextSeason });
+      const snap = await getDocs(collection(db, "items"));
+      await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+      return nextSeason;
+    },
+  };
+  window.__fbReady = true;
+</script>
 
 <script type="text/babel">
 const { useEffect, useState, useRef } = React;
@@ -59,130 +154,223 @@ function waitForFb() {
   });
 }
 
-function BrowseList({ items, myId, onRequest, onCancel, showDone, setShowDone }) {
-  const filteredItems = showDone ? items : items.filter(it => it.status !== "matched");
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button onClick={() => setShowDone(!showDone)} style={{ background: '#ECE4D2', padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 12, color: '#555', fontWeight: 600 }}>
-          {showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
-        </button>
-      </div>
-      {filteredItems.length === 0 ? (
-        <EmptyState icon="📦" text="아직 올라온 나눔이 없어요." sub="첫 나눔을 시작해보세요." />
-      ) : (
-        filteredItems.map((it) => {
-          const isMine = it.giverId === myId;
-          const requested = it.requesters?.includes(myId);
-          return (
-            <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
-              <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 10, background: "#F1ECDD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                  {emojiFor(it.category)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, background: it.status === "open" ? "#EAF0E3" : "#F3E9C9", color: it.status === "open" ? "#4C5C3E" : "#7A6420", padding: "3px 8px", borderRadius: 5 }}>
-                      {it.status === "open" ? "나눔중" : "매칭완료"}
-                    </span>
-                  </div>
-                  {it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}</div>}
-                  
-                  {it.image && (
-                    <div style={{ marginTop: 8, marginBottom: 8 }}>
-                      <img src={it.image} style={{ width: "100%", maxHeight: 220, borderRadius: 8, objectFit: "cover", border: "1px solid #EFEAE2" }} />
-                    </div>
-                  )}
-
-                  <div style={{ fontSize: 11.5, color: "#A39C8C", marginBottom: 8 }}>
-                    {labelFor(it.category)} · {it.status === "open" ? "신청 " + (it.requesters?.length || 0) + "명" : "전달 완료"}
-                  </div>
-                  {!isMine && it.status === "open" && (
-                    requested ? (
-                      <button onClick={() => onCancel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#F6F2E8", color: "#6B6455", fontWeight: 600 }}>신청 취소하기</button>
-                    ) : (
-                      <button onClick={() => onRequest(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받고 싶어요</button>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
-function CreateForm({ form, setForm, onSubmit, posting, imgFile, setImgFile, imgPreview, setImgPreview }) {
-  return (
-    <div>
-      <div style={{ marginBottom: 18 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>무엇을 나누시겠어요?</label>
-        <input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} placeholder="예: 아이 겨울 외투 (110cm)"
-          style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14.5 }} />
-      </div>
-      <div style={{ marginBottom: 18 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>물품 사진 (최대 1장)</label>
-        <input type="file" accept="image/*" onChange={(e) => {
-          const file = e.target.files[0];
-          if (file) {
-            setImgFile(file);
-            setImgPreview(URL.createObjectURL(file));
-          }
-        }} style={{ fontSize: 13, color: "#6B6455" }} />
-        {imgPreview && (
-          <div style={{ marginTop: 10 }}>
-            <img src={imgPreview} style={{ width: 80, height: 80, borderRadius: 8, objectFit: "cover", border: "1px solid #DCD3BC" }} />
-          </div>
-        )}
-      </div>
-      <div style={{ marginBottom: 18 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>간단한 설명</label>
-        <textarea value={form.desc} onChange={(e) => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="상태, 크기 등을 적어주세요" rows={3}
-          style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14, resize: "none", lineHeight: 1.5 }} />
-      </div>
-      <button onClick={onSubmit} disabled={posting} style={{ width: "100%", padding: "13px", borderRadius: 9, background: "#5C6E4B", color: "#F6F2E8", fontSize: 15, fontWeight: 700 }}>
-        {posting ? "등록 중..." : "➕ 나눔 올리기"}
-      </button>
-    </div>
-  );
-}
-
-function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedReceiver, pickedDate, setPickedDate, onConfirm, onCancelItem }) {
-  if (items.length === 0) return <EmptyState icon="🎁" text="올린 나눔이 없어요." />;
-  return (
-    <div>
-      {items.map((it) => (
-        <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
-          <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
-          <div style={{ marginTop: 10, display: "flex", gap: "8px" }}>
-            {it.status === "open" && (
-              <>
-                <button onClick={() => togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, background: "#5C6E4B", color: "white" }}>당첨자 선정 ▼</button>
-                <button onClick={() => onCancelItem(it.id, it.imagePath)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, background: "#FAF6EE", color: "#B34A4A", border: "1px solid #D8CFB8" }}>나눔 취소하기</button>
-              </>
-            )}
-          </div>
-          {openPanel[it.id] && (
-            <div style={{ background: "#F3EFE2", padding: 14, marginTop: 10, borderRadius: 10 }}>
-              <select onChange={(e) => setPickedReceiver(p => ({ ...p, [it.id]: e.target.value }))} style={{ width: "100%", padding: 8, marginBottom: 8 }}>
-                <option value="">-- 선택 --</option>
-                {it.requesters?.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <input type="date" onChange={(e) => setPickedDate(p => ({ ...p, [it.id]: e.target.value }))} style={{ width: "100%", padding: 8, marginBottom: 8 }} />
-              <button onClick={() => onConfirm(it.id)} style={{ width: "100%", padding: 9, background: "#4C5C3E", color: "white" }}>확정하기</button>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function EmptyState({ icon, text }) { return <div style={{ textAlign: "center", padding: 40, color: "#A39C8C" }}><h3>{icon}</h3><p>{text}</p></div>; }
-
 function ChurchSharingApp() {
   const [fbApi, setFbApi] = useState(null);
   const [myId, setMyId] = useState(null);
+  const [season, setSeason] = useState(1);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [pin, setPin] = useState("");
+  const [tab, setTab] = useState("browse");
+  const [items, setItems] = useState([]);
+  const [ready, setReady] = useState(false);
+  const [toast, setToast] = useState("");
+  const [showDone, setShowDone] = useState(false); 
+  const toastTimer = useRef(null);
+
+  const [form, setForm] = useState({ title: "", desc: "", category: "living" });
+  const [posting, setPosting] = useState(false);
+  const [imgFile, setImgFile] = useState(null);
+  const [imgPreview, setImgPreview] = useState("");
+
+  const [openPanel, setOpenPanel] = useState({});
+  const [pickedReceiver, setPickedReceiver] = useState({});
+  const [pickedDate, setPickedDate] = useState({});
+
+  const showToast = (msg) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), 2200);
+  };
+
+  useEffect(() => {
+    let unsub = null;
+    waitForFb().then((fb) => {
+      setFbApi(fb);
+      fb.getSeason().then((currentSeason) => {
+        let id = null;
+        try {
+          const raw = window.localStorage.getItem("my-anon-id");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.season === currentSeason) id = parsed.id;
+          }
+        } catch (e) {}
+        if (!id) {
+          fb.nextId(currentSeason).then((n) => {
+            id = ID_PREFIX + n;
+            window.localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
+            setMyId(id);
+            setSeason(currentSeason);
+            unsub = fb.watchItems(list => setItems(list));
+            setReady(true);
+          });
+        } else {
+          setMyId(id);
+          setSeason(currentSeason);
+          unsub = fb.watchItems(list => setItems(list));
+          setReady(true);
+        }
+      });
+    });
+    return () => { if (unsub) unsub(); };
+  }, []);
+
+  const submitItem = async () => {
+    if (!form.title.trim()) { showToast("물품 이름을 적어주세요."); return; }
+    setPosting(true);
+    try {
+      let url = "", path = "";
+      if (imgFile) {
+        const res = await fbApi.uploadImage(imgFile, myId);
+        url = res.url; path = res.imagePath;
+      }
+      await fbApi.addItem({ title: form.title.trim(), desc: form.desc.trim(), category: form.category, giverId: myId, requesters: [], status: "open", image: url, imagePath: path });
+      setForm({ title: "", desc: "", category: "living" });
+      setImgFile(null); setImgPreview("");
+      setTab("browse");
+      showToast("나눔 물품이 등록되었어요.");
+    } catch (e) { showToast("등록 중 문제가 발생했어요."); }
+    setPosting(false);
+  };
+
+  const handleCancelItem = async (itemId, imagePath) => {
+    if (confirm("이 물품 등록을 취소하시겠습니까? 목록과 사진 서버에서 완전히 삭제됩니다.")) {
+      try {
+        await fbApi.deleteItem(itemId, imagePath);
+        showToast("나눔 등록이 취소되었습니다.");
+      } catch (e) { showToast("취소 처리 중 문제가 발생했습니다."); }
+    }
+  };
+
+  const confirmMatch = async (itemId) => {
+    const r = pickedReceiver[itemId]; const d = pickedDate[itemId];
+    if (!r || !d) { showToast("대상자와 날짜를 지정해 주세요."); return; }
+    try {
+      await fbApi.updateItem(itemId, { selectedReceiverId: r, dropOffDate: d, status: "matched" });
+      showToast("나눔 매칭이 확정되었습니다!");
+    } catch (e) { showToast("매칭 중 오류가 발생했습니다."); }
+  };
+
+  if (!ready) return <div style={{ padding: 40, textAlign: 'center', color: '#8B7E66' }}>주님의 자리로 접속 중...</div>;
+
+  const filteredItems = showDone ? items : items.filter(it => it.status !== "matched");
+
+  return (
+    <div style={{ padding: "0 0 40px 0" }}>
+      <div style={{ background: "#8B7E66", color: "white", padding: "24px 20px", textAlign: "center" }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontFamily: "'Noto Serif KR', serif" }}>나눔의 자리</h1>
+<div style={{ fontSize: 13, opacity: 0.85, marginTop: 5 }}>내 ID: <span style={{ fontWeight: 600 }}>{myId} · 시즌 {season}
+<div style={{ display: "flex", background: "#F0EAE1", borderBottom: "1px solid #ECE4D2" }}>
+<button onClick={() => setTab("browse")} style={{ flex: 1, padding: "12px 4px", background: tab === "browse" ? "#FAF6EE" : "none", color: tab === "browse" ? "#2A2823" : "#A39C8C", fontWeight: tab === "browse" ? 600 : 500, fontSize: 13.5 }}>둘러보기
+<button onClick={() => setTab("share")} style={{ flex: 1, padding: "12px 4px", background: tab === "share" ? "#FAF6EE" : "none", color: tab === "share" ? "#2A2823" : "#A39C8C", fontWeight: tab === "share" ? 600 : 500, fontSize: 13.5 }}>나눔하기
+<button onClick={() => setTab("mine")} style={{ flex: 1, padding: "12px 4px", background: tab === "mine" ? "#FAF6EE" : "none", color: tab === "mine" ? "#2A2823" : "#A39C8C", fontWeight: tab === "mine" ? 600 : 500, fontSize: 13.5 }}>나의 나눔 {items.filter(i=>i.giverId===myId).length ? (${items.filter(i=>i.giverId===myId).length}) : ""}
+<div style={{ padding: "20px 16px" }}>
+{tab === "browse" && (
+
+<div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+<button onClick={() => setShowDone(!showDone)} style={{ background: '#ECE4D2', padding: '6px 12px', borderRadius: 6, fontSize: 12, color: '#555', fontWeight: 600 }}>
+{showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
+
+
+{filteredItems.length === 0 ? <div style={{ textAlign: "center", padding: 40, color: "#A39C8C" }}>📦 등록된 나눔 물품이 없습니다. :
+filteredItems.map((it) => (
+<div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
+<div style={{ display: "flex", gap: 12 }}>
+<div style={{ width: 44, height: 44, borderRadius: 10, background: "#F1ECDD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{emojiFor(it.category)}
+<div style={{ flex: 1, minWidth: 0 }}>
+<div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+<span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}
+<span style={{ fontSize: 11, fontWeight: 600, background: it.status === "open" ? "#EAF0E3" : "#F3E9C9", color: it.status === "open" ? "#4C5C3E" : "#7A6420", padding: "3px 8px", borderRadius: 5 }}>{it.status === "open" ? "나눔중" : "매칭완료"}
+
+{it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}}
+{it.image && <div style={{ marginTop: 8, marginBottom: 8 }}><img src={it.image} style={{ width: "100%", maxHeight: 220, borderRadius: 8, objectFit: "cover", border: "1px solid #EFEAE2" }} />}
+<div style={{ fontSize: 11.5, color: "#A39C8C", marginBottom: 8 }}>{labelFor(it.category)} · {it.status === "open" ? 신청 ${it.requesters?.length || 0}명 : "전달 완료"}
+{it.giverId !== myId && it.status === "open" && (
+it.requesters?.includes(myId) ?
+<button onClick={()=>fbApi.cancelRequest(it.id, myId)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#F6F2E8", color: "#6B6455", fontWeight: 600 }}>신청 취소하기 :
+<button onClick={()=>fbApi.requestItem(it.id, myId)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받고 싶어요
+)}
+
+
+
+))
+}
+
+)}
+{tab === "share" && (
+
+<div style={{ marginBottom: 18 }}>
+무엇을 나누시겠어요?
+<input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} placeholder="예: 아이 겨울 외투 (110cm)" style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14.5 }} />
+
+<div style={{ marginBottom: 18 }}>
+물품 사진 (최대 1장)
+<input type="file" accept="image/*" onChange={(e) => { const file = e.target.files[0]; if (file) { setImgFile(file); setImgPreview(URL.createObjectURL(file)); } }} style={{ fontSize: 13, color: "#6B6455", marginBottom: 12 }} />
+{imgPreview && <div style={{ marginTop: 10, marginBottom: 12 }}><img src={imgPreview} style={{ width: 80, height: 80, borderRadius: 8, objectFit: "cover", border: "1px solid #DCD3BC" }} />}
+
+<div style={{ marginBottom: 18 }}>
+간단한 설명 (선택)
+<textarea value={form.desc} onChange={(e) => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="상태, 크기 등을 적어주세요" rows={3} style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14, resize: "none", lineHeight: 1.5 }} />
+
+<div style={{ marginBottom: 24 }}>
+분류
+<div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+{CATEGORIES.map((c) => (
+<button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={{ padding: "8px 12px", borderRadius: 20, border: form.category === c.key ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: form.category === c.key ? "#EAF0E3" : "#FDFBF5", color: form.category === c.key ? "#4C5C3E" : "#6B6455", fontSize: 13, fontWeight: 600 }}>{c.emoji} {c.label}
+))}
+
+
+<button onClick={submitItem} disabled={posting} style={{ width: "100%", padding: "13px", borderRadius: 9, background: "#5C6E4B", color: "#F6F2E8", fontSize: 15, fontWeight: 700 }}>{posting ? "🚀 사진 및 물품 등록 중..." : "➕ 나눔 올리기"}
+
+)}
+{tab === "mine" && (
+
+{items.filter(i=>i.giverId===myId).length === 0 ? <div style={{ textAlign: "center", padding: 40, color: "#A39C8C" }}>🎁 아직 등록한 나눔이 없습니다. :
+items.filter(i=>i.giverId===myId).map((it) => (
+<div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
+<div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+<span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}
+<span style={{ fontSize: 11, fontWeight: 600, background: it.status === "open" ? "#EAF0E3" : "#F3E9C9", color: it.status === "open" ? "#4C5C3E" : "#7A6420", padding: "3px 8px", borderRadius: 5 }}>{it.status === "open" ? "나눔중" : "매칭완료"}
+
+{it.status === "open" && (
+
+<div style={{ fontSize: 12.5, color: "#77715F", marginBottom: 10 }}>{it.requesters?.length ? ${it.requesters.length}명이 받고 싶어해요 : "아직 신청한 분이 없어요"}
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+{it.requesters?.length > 0 && !openPanel[it.id] && <button onClick={()=>setOpenPanel(p=>({...p, [it.id]:!p[it.id]}))} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받을 분 선택하기 ›}
+{!openPanel[it.id] && <button onClick={()=>handleCancelItem(it.id, it.imagePath)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#FAF6EE", color: "#B34A4A", fontWeight: 600 }}>나눔 취소하기}
+
+{openPanel[it.id] && (
+<div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14, marginTop: 10 }}>
+<div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>받으실 분을 골라주세요
+<div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
+{it.requesters?.map(r => <button key={r} onClick={()=>setPickedReceiver(p=>({...p, [it.id]:r}))} style={{ padding: "7px 12px", borderRadius: 20, border: pickedReceiver[it.id] === r ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: pickedReceiver[it.id] === r ? "#EAF0E3" : "#FDFBF5", color: pickedReceiver[it.id] === r ? "#4C5C3E" : "#6B6455", fontSize: 13, fontWeight: 600 }}>{r})}
+
+<div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>전달 날짜 지정
+<input type="date" onChange={(e)=>setPickedDate(p=>({...p, [it.id]:e.target.value}))} style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #DCD3BC", marginBottom: 12 }} />
+<div style={{ display: "flex", gap: 6 }}><button onClick={()=>confirmMatch(it.id)} style={{ flex: 1, padding: "9px", borderRadius: 7, background: "#4C5C3E", color: "white", fontWeight: 600 }}>확정하기<button onClick={()=>setOpenPanel(p=>({...p, [it.id]:false}))} style={{ padding: "9px 14px", borderRadius: 7, border: "1px solid #C4B9A3", color: "#6B6455" }}>닫기
+
+)}
+
+)}
+{it.status === "matched" && <div style={{ fontSize: 13.5, color: "#43A047", marginTop: 4, fontWeight: "bold" }}>✓ {it.selectedReceiverId} 님에게 {fmtDate(it.dropOffDate)} 수령 예정}
+
+))
+}
+
+)}
+<div style={{ margin: "24px 16px 0 16px", padding: "16px", background: "#F1ECDD", borderRadius: 10, border: "1px solid #ECE4D2" }}>
+<div onClick={() => setAdminOpen(!adminOpen)} style={{ fontSize: 13, color: "#7C7566", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+⚙️ 관리자 메뉴{adminOpen ? "닫기 ▲" : "열기 ▼"}
+
+{adminOpen && (
+<div style={{ marginTop: 12, borderTop: "1px dashed #DCD3BC", paddingTop: 12 }}>
+<input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="비밀번호" style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #DCD3BC", fontSize: 13, background: "#FAF6EE", marginBottom: 8 }} />
+<button onClick={handleResetSeason} style={{ width: "100%", padding: "10px", background: "#A35C4B", color: "white", borderRadius: 6, fontSize: 12.5, fontWeight: 600 }}>시즌 초기화
+
+)}
+
+
+);
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render();

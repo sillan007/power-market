@@ -39,7 +39,7 @@ window.fb = {
       try {
         await deleteObject(sRef(storage, imagePath));
       } catch (e) {
-        console.error("실물 사진 파기 실패:", e);
+        console.error("Storage 실물 파기 실패:", e);
       }
     }
   },

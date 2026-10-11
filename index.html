@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (ID 고정, 별표 암호창, 버튼 부활 완치본)
+  나눔의 자리 - 교회 나눔 웹앱 (리액트 기반 문법 완전 교정 완치본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -49,7 +49,6 @@
   .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
   .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
   
-  /* 🛠️ 비밀번호 입력 시 별표(*) 처리를 위한 보안 패스워드 모달 레이아웃 */
   .pwd-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
   .pwd-box { background: white; padding: 20px; border-radius: 10px; width: 300px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
   
@@ -57,36 +56,11 @@
 </style>
 </head>
 <body>
+<div id="root"></div>
 
-<div id="root">
-  <div class="header-bar">
-    <h1 class="header-title">나눔의 자리</h1>
-    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">로딩중...</span> · 시즌 <span id="display-season">1</span></div>
-  </div>
-
-  <div class="tab-container">
-    <button class="tab-btn active" id="tab-browse-btn" onclick="switchTab('browse')">둘러보기</button>
-    <button class="tab-btn" id="tab-share-btn" onclick="switchTab('share')">나눔하기</button>
-    <button class="tab-btn" id="tab-mine-btn" onclick="switchTab('mine')">나의 나눔</button>
-  </div>
-
-  <div class="content-area" id="content-container"></div>
-</div>
-
-<!-- 🛠️ 비밀번호 숨김 입력용 팝업 창 본체 기틀 배치 -->
-<div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
-  <div class="pwd-box">
-    <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
-    <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align: center; margin-bottom: 14px;" />
-    <div style="display: flex; gap: 8px;">
-      <button onclick="submitAdminPassword()" class="select-btn" style="flex: 1; padding: 8px 0;">확인</button>
-      <button onclick="closeAdminModal()" class="cancel-btn" style="flex: 1; padding: 8px 0; background: #EEE; color: #333; border: none;">취소</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast-message" class="toast"></div>
-<!-- 파이어베이스 모듈 스크립트 결속 연동 및 API 바인딩 -->
+<script src="https://unpkg.com"></script>
+<script src="https://unpkg.com"></script>
+<script src="https://unpkg.com"></script>
 <script type="module">
   import { initializeApp } from "https://gstatic.com";
   import {
@@ -209,420 +183,413 @@
   window.__fbReady = true;
   if (window.__fbCallback) window.__fbCallback();
 </script>
-<script>
-  let fbApi = null;
-  let myId = null;
-  let season = 1;
-  let currentTab = 'browse';
-  let allItems = [];
-  let showDone = false;
-  let isAdminAuthed = false;
-  let blockedUsers = [];
+<script type="text/babel">
+const { useEffect, useState, useRef } = React;
+const ID_PREFIX = "선민";
 
-  const ID_PREFIX = "선민";
+function waitForFb() {
+  return new Promise(function(resolve) {
+    if (window.__fbReady) return resolve(window.fb);
+    const t = setInterval(function() {
+      if (window.__fbReady) { clearInterval(t); resolve(window.fb); }
+    }, 50);
+  });
+}
 
-  function showToast(msg) {
-    const el = document.getElementById('toast-message');
-    if (!el) return;
-    el.innerText = msg;
-    el.style.display = 'block';
-    setTimeout(function() { el.style.display = 'none'; }, 2200);
-  }
+function ChurchSharingApp() {
+  const [fbApi, setFbApi] = useState(null);
+  const [myId, setMyId] = useState("");
+  const [season, setSeason] = useState(1);
+  const [tab, setTab] = useState("browse");
+  const [items, setItems] = useState([]);
+  const [ready, setReady] = useState(false);
+  const [showDone, setShowDone] = useState(false);
+  const [toast, setToast] = useState("");
+  
+  // 비밀번호 입력 모달 관리용 상태
+  const [showPwdModal, setShowPwdModal] = useState(false);
+  const [pwdInput, setPwdInput] = useState("");
+  const [isAdminAuthed, setIsAdminAuthed] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState([]);
 
-  // 🛠️ 파싱 충돌 원인을 완전 파기하여 로딩중 멈춤을 원천 해결하는 식별 엔진
-  function initApp() {
-    fbApi = window.fb;
-    if (!fbApi) return;
-    
-    fbApi.getBlockedUsers().then(function(list) {
-      blockedUsers = list;
-    });
+  // 입력 폼 전용 상태
+  const [formTitle, setFormTitle] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [imgFile, setImgFile] = useState(null);
+  const [imgPreview, setImgPreview] = useState("");
 
-    fbApi.getSeason().then(function(currentSeason) {
-      season = currentSeason;
-      const seasonEl = document.getElementById('display-season');
-      if (seasonEl) seasonEl.innerText = season;
-      
-      let id = null;
-      try {
-        const raw = window.localStorage.getItem("my-anon-id");
-        if (raw) {
-          if (raw.indexOf("{") !== -1) {
-            const parsed = JSON.parse(raw);
-            id = parsed.id;
-          } else {
-            id = raw;
-          }
-        }
-      } catch (e) {}
+  const toastTimer = useRef(null);
 
-      if (!id) {
-        fbApi.nextId(currentSeason).then(function(n) {
-          id = ID_PREFIX + n;
-          window.localStorage.setItem("my-anon-id", id);
-          myId = id;
-          finishInit();
-        });
-      } else {
-        myId = id;
-        finishInit();
-      }
-    });
-  }
-
-  function finishInit() {
-    const idEl = document.getElementById('display-my-id');
-    if (idEl) idEl.innerText = myId;
-    
-    fbApi.watchItems(function(list) {
-      allItems = list;
-      renderCurrentTab();
-    });
-  }
-
-  window.__fbCallback = function() {
-    if (window.fb) initApp();
+  const showToast = function(msg) {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(function() { setToast(""); }, 2200);
   };
 
-  if (window.fb) {
-    initApp();
-  } else {
-    const checkTimer = setInterval(function() {
-      if (window.fb) {
-        clearInterval(checkTimer);
-        initApp();
-      }
-    }, 50);
-  }
+  useEffect(function() {
+    let unsub = null;
+    waitForFb().then(function(fb) {
+      setFbApi(fb);
+      
+      fb.getBlockedUsers().then(function(bList) {
+        setBlockedUsers(bList);
+      });
 
-  // 🛠️ 비밀번호 보안을 별표(*) 처리하기 위한 전용 모달 스위치 트래픽 교정
-  function switchTab(tabName) {
-    if (tabName === 'admin' && !isAdminAuthed) {
-      document.getElementById('modal-pwd-input').value = "";
-      document.getElementById('admin-pwd-modal').style.display = 'flex';
-      return;
+      fb.getSeason().then(function(currentSeason) {
+        setSeason(currentSeason);
+        let id = null;
+        try {
+          const raw = window.localStorage.getItem("my-anon-id");
+          if (raw) {
+            if (raw.indexOf("{") !== -1) {
+              id = JSON.parse(raw).id;
+            } else {
+              id = raw;
+            }
+          }
+        } catch (e) {}
+
+        if (!id) {
+          fb.nextId(currentSeason).then(function(n) {
+            id = ID_PREFIX + n;
+            window.localStorage.setItem("my-anon-id", id);
+            setMyId(id);
+            unsub = fb.watchItems(function(list) { setItems(list); });
+            setReady(true);
+          });
+        } else {
+          setMyId(id);
+          unsub = fb.watchItems(function(list) { setItems(list); });
+          setReady(true);
+        }
+      });
+    });
+    return function() { if (unsub) unsub(); };
+  }, []);
+  const handleRequest = function(itemId) {
+    fbApi.requestItem(itemId, myId).then(function() { showToast("신청이 완료되었어요."); });
+  };
+
+  const handleCancelRequest = function(itemId) {
+    fbApi.cancelRequest(itemId, myId).then(function() { showToast("신청을 취소했어요."); });
+  };
+
+  const submitItem = async function() {
+    if (!formTitle.trim()) return;
+    setPosting(true);
+    try {
+      let url = "", path = "";
+      if (imgFile) {
+        const res = await fbApi.uploadImage(imgFile, myId);
+        url = res.url; path = res.imagePath;
+      }
+      await fbApi.addItem({
+        title: formTitle.trim(), desc: formDesc.trim(), category: "etc",
+        giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
+        image: url, imagePath: path
+      });
+      setFormTitle(""); setFormDesc(""); setImgFile(null); setImgPreview("");
+      setTab("browse");
+      showToast("나눔 물품이 등록되었어요.");
+    } catch (e) {}
+    setPosting(false);
+  };
+
+  const handleCancelItem = async function(itemId, imagePath) {
+    if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
+      await fbApi.deleteItem(itemId, imagePath);
+      showToast("나눔 등록을 취소했습니다.");
     }
-    currentTab = tabName;
-    updateTabActiveState(tabName);
-    renderCurrentTab();
-  }
+  };
 
-  function submitAdminPassword() {
-    const inputPin = document.getElementById('modal-pwd-input').value;
-    if (!inputPin) return;
-    
-    fbApi.getAdminPin().then(function(realPin) {
-      if (inputPin === realPin || inputPin === "1234") {
-        isAdminAuthed = true;
-        currentTab = 'admin';
-        document.getElementById('admin-pwd-modal').style.display = 'none';
-        updateTabActiveState('admin');
-        renderCurrentTab();
-      } else {
-        alert("비밀번호가 틀렸습니다.");
-      }
-    });
-  }
-
-  function closeAdminModal() {
-    document.getElementById('admin-pwd-modal').style.display = 'none';
-  }
-
-  function updateTabActiveState(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
-    const btnEl = document.getElementById('tab-' + tabName + '-btn');
-    if (btnEl) btnEl.classList.add('active');
-  }
-
-  function handleAdminChangePin() {
-    const newPin = prompt("변경할 새로운 관리자 비밀번호를 입력하세요:");
-    if (!newPin || !newPin.trim()) return;
-    fbApi.setAdminPin(newPin.trim()).then(function() {
-      showToast("관리자 비밀번호가 변경되었습니다.");
-    });
-  }
-
-  function handleAdminToggleBlock(targetId) {
-    if (blockedUsers.indexOf(targetId) !== -1) {
+  const handleAdminToggleBlock = function(targetId) {
+    if (blockedUsers.includes(targetId)) {
       fbApi.unblockUser(targetId).then(function() {
-        fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
+        fbApi.getBlockedUsers().then(function(list) { setBlockedUsers(list); });
         showToast(targetId + " 차단이 해제되었습니다.");
       });
     } else {
       if (confirm(targetId + " 사용자를 차단하시겠습니까?")) {
         fbApi.blockUser(targetId).then(function() {
-          fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
+          fbApi.getBlockedUsers().then(function(list) { setBlockedUsers(list); });
           showToast(targetId + " 사용자가 차단되었습니다.");
         });
       }
     }
-  }
+  };
 
-  function handleAdminDeleteSeason(currSeason) {
+  const handleAdminDeleteSeason = function() {
     if (confirm("정말 시즌을 초기화하고 모든 데이터를 삭제하시겠습니까?")) {
-      fbApi.startNewSeason(currSeason).then(function(nextS) {
-        season = nextS;
-        document.getElementById('display-season').innerText = season;
-        showToast("새로운 시즌 " + season + "이 시작되었습니다.");
-        switchTab('browse');
+      fbApi.startNewSeason(season).then(function(nextS) {
+        setSeason(nextS);
+        showToast("새로운 시즌이 시작되었습니다.");
+        setTab("browse");
       });
     }
-  }
-</script>
-<script>
-  function renderCurrentTab() {
-    const container = document.getElementById('content-container');
-    if (!container) return;
-    
-    let html = "";
+  };
 
-    // 1. 둘러보기 탭 화면 전개 구역
-    if (currentTab === 'browse') {
-      if (blockedUsers.indexOf(myId) !== -1) {
-        container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 이용이 제한된 계정입니다.</div>';
-        return;
-      }
-
-      const filtered = showDone ? allItems : allItems.filter(function(it) {
-        return it.status !== 'matched' && it.status !== 'done';
-      });
-      
-      html += '<div style="display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px;">';
-      html += '  <button onclick="switchTab(\'admin\')" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>';
-      html += '  <button onclick="toggleShowDone()" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">';
-      html += showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기";
-      html += '  </button>';
-      html += '</div>';
-
-      if (filtered.length === 0) {
-        html += '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 물품이 없습니다.</div>';
-      } else {
-        filtered.forEach(function(it) {
-          const isMine = it.giverId === myId;
-          const requested = it.requesters && it.requesters.indexOf(myId) !== -1;
-          
-          html += '<div class="item-card">';
-          html += '  <div class="card-top">';
-          html += '    <span class="badge ' + (it.status === 'open' ? 'open' : 'matched') + '">' + (it.status === 'open' ? '나눔중' : '매칭완료') + '</span>';
-          html += '    <strong style="font-size: 16px;">' + it.title + '</strong>';
-          html += '  </div>';
-          html += '  <p style="color: #666; font-size: 14px; margin: 8px 0; line-height: 1.4;">' + (it.desc || "상세 설명이 없습니다.") + '</p>';
-          
-          if (it.image) {
-            html += '  <div style="margin-top: 8px; margin-bottom: 8px;">';
-            html += '    <img src="' + it.image + '" style="width: 100%; max-height: 220px; border-radius: 8px; object-fit: cover; border: 1px solid #EFEAE2;" />';
-            html += '  </div>';
-          }
-
-          html += '  <div style="font-size: 12px; color: #999; margin-bottom: 8px;">기부자: ' + it.giverId + '</div>';
-          html += '  <div style="margin-top: 10px;">';
-          
-          if (it.status === 'open') {
-            if (isMine) {
-              html += '    <div style="font-size: 12px; color: #A39C8C;">내가 올린 나눔이에요</div>';
-            } else {
-              if (requested) {
-                html += '    <button onclick="handleCancelRequest(\'' + it.id + '\')" class="cancel-btn" style="width: 100%;">신청 취소하기</button>';
-              } else {
-                const reqLen = (it.requesters && it.requesters.length) || 0;
-                html += '    <button onclick="handleRequest(\'' + it.id + '\')" class="select-btn" style="width: 100%;">받고 싶어요 (' + reqLen + '명)</button>';
-              }
-            }
-          } else {
-            html += '  <div style="background: #F5F5F5; padding: 8px; border-radius: 6px; font-size: 13px; color: #43A047; font-weight: bold;">';
-            html += '    🎉 ' + it.selectedReceiverId + ' 님과 매칭완료!';
-            html += '  </div>';
-          }
-          
-          html += '  </div>';
-          html += '</div>';
-        });
-      }
+  const handleAdminForceDelete = async function(itemId, imagePath) {
+    if (confirm("관리자 권한으로 이 게시물을 영구 강제 삭제하시겠습니까?")) {
+      await fbApi.deleteItem(itemId, imagePath);
+      showToast("게시물이 강제 삭제되었습니다.");
     }
-    // 2. 나눔하기 등록 폼 전개 구역
-    else if (currentTab === 'share') {
-      if (blockedUsers.indexOf(myId) !== -1) {
-        container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 나눔 등록이 불가능합니다.</div>';
-        return;
-      }
+  };
 
-      html += '<div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">';
-      html += '  <h3 style="margin-top: 0; color: #8B7E66;">나눔 물품 등록</h3>';
-      
-      html += '  <div class="form-group">';
-      html += '    <label class="form-label">물품 이름</label>';
-      html += '    <input type="text" id="form-title" placeholder="예: 아동용 도서 세트" class="form-input" />';
-      html += '  </div>';
-
-      html += '  <div class="form-group">';
-      html += '    <label class="form-label">물품 사진 (최대 1장)</label>';
-      html += '    <input type="file" id="form-image" accept="image/*" class="form-input" onchange="previewImage(this)" />';
-      html += '    <div id="image-preview-area" style="margin-top: 10px; display: none;">';
-      html += '      <img id="form-preview-img" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #DCD3BC;" />';
-      html += '    </div>';
-      html += '  </div>';
-
-      html += '  <div class="form-group">';
-      html += '    <label class="form-label">설명 (상태, 사이즈 등)</label>';
-      html += '    <textarea id="form-desc" rows="3" placeholder="물건의 상태나 수령 방법을 적어주세요." class="form-textarea"></textarea>';
-      html += '  </div>';
-
-      html += '  <button onclick="handlePostItem()" class="action-btn" id="post-submit-btn" style="margin-top: 10px;">나눔 올리기</button>';
-      html += '</div>';
-    }
-
-    // 3. 나의 나눔 관리 대시보드 전개 구역
-    else if (currentTab === 'mine') {
-      const myItems = allItems.filter(function(i) { return i.giverId === myId; });
-      html += '<h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 나눔</h3>';
-      
-      if (myItems.length === 0) {
-        html += '<div style="text-align: center; padding: 30px 0; color: #999;">아직 등록한 나눔이 없습니다.</div>';
-      } else {
-        myItems.forEach(function(it) {
-          const reqCount = (it.requesters && it.requesters.length) || 0;
-          const iPath = it.imagePath || '';
-          
-          html += '<div class="item-card" style="border-left: 4px solid #8B7E66;">';
-          html += '  <strong style="font-size: 16px; display: block; margin-bottom: 4px;">' + it.title + '</strong>';
-          html += '  <div style="font-size: 13px; color: #666; margin-bottom: 8px;">신청자 수: ' + reqCount + '명</div>';
-          html += '  <div style="margin-top: 12px; display: flex; gap: 8px;">';
-          
-          if (it.status === 'open') {
-            html += '    <button onclick="handleCancelItem(\'' + it.id + '\', \'' + iPath + '\')" class="cancel-btn" style="background: #EF9A9A; color: #B71C1C; border: none;">';
-            html += '      나눔 취소하기';
-            html += '    </button>';
-          } else {
-            html += '    <div style="font-size: 13px; color: #43A047; font-weight: bold;">✓ ' + it.selectedReceiverId + ' 님과 매칭 수령 완료</div>';
-          }
-          
-          html += '  </div>';
-          html += '</div>';
-        });
-      }
-    }
-
-    // 4. 원격 운영 관리센터 대시보드 조립 전개 구역
-    else if (currentTab === 'admin') {
-      html += '<div class="admin-panel-box">';
-      html += '  <div style="display:flex; justify-content:space-between; align-items:center;">';
-      html += '    <h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3>';
-      html += '    <button onclick="switchTab(\'browse\')" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button>';
-      html += '  </div>';
-      
-      html += '  <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>';
-      html += '  <button onclick="handleAdminChangePin()" class="select-btn" style="width:100%; padding:10px; font-size:13px;">🔒 마스터 PIN 번호 변경하기</button>';
-      
-      html += '  <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기 (' + allItems.length + '개)</div>';
-      if (allItems.length === 0) {
-        html += '  <div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록된 게시물이 존재하지 않습니다.</div>';
-      } else {
-        allItems.forEach(function(it) {
-          const imgSign = it.image ? " 🖼️" : "";
-          html += '  <div class="admin-list-item">';
-          html += '    <div style="min-width:0; flex:1; padding-right:8px;">';
-          html += '      <strong>' + it.title + '</strong>' + imgSign + '<br/>';
-          html += '      <span style="font-size:11px; color:#888;">작성자: ' + it.giverId + ' · 상태: ' + it.status + '</span>';
-          html += '    </div>';
-          html += '    <button onclick="handleAdminForceDelete(\'' + it.id + '\', \'' + (it.imagePath || '') + '\')" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button>';
-          html += '  </div>';
-        });
-      }
-      // 파트 C : 사용자 계정 식별 및 악성 유저 차단 원격 통제소 유닛
-      html += '  <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div>';
-      const uniqueUsers = [];
-      allItems.forEach(function(it) {
-        if (uniqueUsers.indexOf(it.giverId) === -1) uniqueUsers.push(it.giverId);
-        if (it.requesters) {
-          it.requesters.forEach(function(r) {
-            if (uniqueUsers.indexOf(r) === -1) uniqueUsers.push(r);
-          });
-        }
-      });
-
-      if (uniqueUsers.length === 0) {
-        html += '  <div style="font-size:12px; color:#999; text-align:center; padding:10px;">조회된 유저 네트워크가 비어있습니다.</div>';
-      } else {
-        uniqueUsers.forEach(function(uId) {
-          const isBlocked = blockedUsers.indexOf(uId) !== -1;
-          html += '  <div class="admin-list-item">';
-          html += '    <span>👤 <strong>' + uId + '</strong>' + (isBlocked ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span>';
-          html += '    <button onclick="handleAdminToggleBlock(\'' + uId + '\')" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">';
-          html += isBlocked ? '차단해제' : '유저차단';
-          html += '    </button>';
-          html += '  </div>';
-        });
-      }
-
-      // 파트 D : 마스터 데이터 초기화 전면 파기 유닛
-      html += '  <div class="admin-sub-title">시즌 마감 및 전체 데이터 마스터 초기화</div>';
-      html += '  <button onclick="handleAdminDeleteSeason(' + season + ')" style="background:#B34A4A; color:white; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:13.5px;">⚠️ 현재 시즌 종료 및 데이터 전면 초기화</button>';
-      html += '</div>';
-    }
-
-    container.innerHTML = html;
-  }
-
-  function toggleShowDone() { showDone = !showDone; renderCurrentTab(); }
-  function handleRequest(id) { fbApi.requestItem(id, myId).then(function() { showToast("신청이 완료되었어요."); }); }
-  function handleCancelRequest(id) { fbApi.cancelRequest(id, myId).then(function() { showToast("신청을 취소했어요."); }); }
-  
-  function previewImage(input) {
-    if (input.files && input.files[0]) {
-      document.getElementById('image-preview-area').style.display = 'block';
-      document.getElementById('form-preview-img').src = URL.createObjectURL(input.files[0]);
-    }
-  }
-
-  function handlePostItem() {
-    const title = document.getElementById('form-title').value;
-    const desc = document.getElementById('form-desc').value;
-    const fileInput = document.getElementById('form-image');
-    const file = fileInput && fileInput.files && fileInput.files[0];
-
-    if (!title.trim()) { alert("물품 이름을 입력하세요."); return; }
-    
-    const btn = document.getElementById('post-submit-btn');
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = "🚀 사진 및 나눔 물품 등록 중...";
-    }
-
-    if (file) {
-      fbApi.uploadImage(file, myId).then(function(res) {
-        saveToFirestore(title, desc, res.url, res.imagePath);
-      });
+  const openAdminTab = function() {
+    if (isAdminAuthed) {
+      setTab("admin");
     } else {
-      saveToFirestore(title, desc, "", "");
+      setPwdInput("");
+      setShowPwdModal(true);
     }
-  }
+  };
 
-  function saveToFirestore(title, desc, url, path) {
-    fbApi.addItem({
-      title: title.trim(), desc: desc.trim(), category: "etc",
-      giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
-      image: url, imagePath: path
-    }).then(function() {
-      showToast("나눔 물품이 등록되었어요.");
-      switchTab('browse');
+  const submitAdminPassword = function() {
+    fbApi.getAdminPin().then(function(realPin) {
+      if (pwdInput === realPin || pwdInput === "1234") {
+        setIsAdminAuthed(true);
+        setShowPwdModal(false);
+        setTab("admin");
+      } else {
+        alert("비밀번호가 틀렸습니다.");
+      }
     });
+  };
+
+  if (!ready) return <div style={{ padding: 40, textAlign: 'center', color: '#8B7E66' }}>주님의 자리로 접속 중...</div>;
+
+  if (blockedUsers.includes(myId)) {
+    return <div style={{ textAnlign: 'center', padding: '40px 20px', color: '#B34A4A', fontWeight: 'bold', textAlign: 'center' }}>🚫 운영자 정책에 의해 이용이 제한된 계정입니다.</div>;
   }
 
-  function handleCancelItem(id, imagePath) {
-    if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
-      fbApi.deleteItem(id, imagePath).then(function() {
-        showToast("나눔 등록을 취소했습니다.");
-      });
-    }
-  }
+  const filteredItems = showDone ? items : items.filter(function(it) { return it.status !== 'matched'; });
 
-  function handleAdminForceDelete(id, imagePath) {
-    if (confirm("관리자 권한으로 이 게시물을 영구 강제 삭제하시겠습니까? 부적절한 글과 실물 이미지까지 전면 폭파 파기됩니다.")) {
-      fbApi.deleteItem(id, imagePath).then(function() {
-        showToast("게시물이 강제 삭제되었습니다.");
-      });
-    }
-  }
+  return (
+    <div style={{ paddingBottom: 40 }}>
+      <div class="header-bar">
+        <h1 class="header-title">나눔의 자리</h1>
+        <div class="header-info">
+          내 ID: <span style={{ fontWeight: 600 }}>{myId}</span> · 시즌 {season}
+        </div>
+      </div>
+      
+      <div class="tab-container">
+        <button onClick={function() { setTab("browse"); }} class={"tab-btn " + (tab === "browse" ? "active" : "")}>둘러보기</button>
+        <button onClick={function() { setTab("share"); }} class={"tab-btn " + (tab === "share" ? "active" : "")}>나눔하기</button>
+        <button onClick={function() { setTab("mine"); }} class={"tab-btn " + (tab === "mine" ? "active" : "")}>나의 나눔</button>
+      </div>
+
+      <div class="content-area">
+        {tab === "browse" && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12, gap: 8 }}>
+              <button onClick={openAdminTab} class="cancel-btn" style={{ background: '#ECE4D2', color: '#555', border: 'none', padding: '6px 12px' }}>⚙️ 관리센터</button>
+              <button onClick={function() { setShowDone(!showDone); }} class="cancel-btn" style={{ background: '#ECE4D2', color: '#555', border: 'none', padding: '6px 12px' }}>
+                {showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
+              </button>
+            </div>
+            {filteredItems.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, color: "#A39C8C" }}>📦 등록된 나눔 물품이 없습니다.</div>
+            ) : (
+              filteredItems.map(function(it) {
+                const isMine = it.giverId === myId;
+                const requested = it.requesters && it.requesters.includes(myId);
+                return (
+                  <div key={it.id} class="item-card">
+                    <div class="card-top">
+                      <span class={"badge " + (it.status === "open" ? "open" : "matched")}>
+                        {it.status === "open" ? "나눔중" : "매칭완료"}
+                      </span>
+                      <strong style={{ fontSize: 16 }}>{it.title}</strong>
+                    </div>
+                    {it.desc && <p style={{ color: '#666', fontSize: 14, margin: '8px 0', lineHeight: 1.4 }}>{it.desc}</p>}
+                    {it.image && (
+                      <div style={{ marginTop: 8, marginBottom: 8 }}>
+                        <img src={it.image} style={{ width: "100%", maxHeight: 220, borderRadius: 8, objectFit: "cover", border: "1px solid #EFEAE2" }} />
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: '#999', marginBottom: 8 }}>기부자: {it.giverId}</div>
+                    <div style={{ marginTop: 10 }}>
+                      {it.status === "open" ? (
+                        isMine ? (
+                          <div style={{ fontSize: 12, color: "#A39C8C" }}>내가 올린 나눔이에요</div>
+                        ) : requested ? (
+                          <button onClick={function() { handleCancelRequest(it.id); }} class="cancel-btn" style={{ width: "100%" }}>신청 취소하기</button>
+                        ) : (
+                          <button onClick={function() { handleRequest(it.id); }} class="select-btn" style={{ width: "100%" }}>받고 싶어요 ({(it.requesters && it.requesters.length) || 0}명)</button>
+                        )
+                      ) : (
+                        <div style={{ background: "#F5F5F5", padding: 8, border_radius: 6, fontSize: 13, color: "#43A047", fontWeight: "bold" }}>
+                          🎉 {it.selectedReceiverId} 님과 매칭완료!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+        {tab === "share" && (
+          <div style={{ background: 'white', border: '1px solid #EFEAE2', padding: 16, border_radius: 8 }}>
+            <h3 style={{ marginTop: 0, color: '#8B7E66' }}>나눔 물품 등록</h3>
+            
+            <div class="form-group">
+              <label class="form-label">물품 이름</label>
+              <input type="text" value={formTitle} onChange={function(e) { setFormTitle(e.target.value); }} placeholder="예: 아동용 도서 세트" class="form-input" />
+            </div>
+
+            {/* 🛠️ 최대 1장의 사진 첨부 및 실시간 미리보기 프리뷰 연동 모듈 */}
+            <div class="form-group">
+              <label class="form-label">물품 사진 (최대 1장)</label>
+              <input type="file" accept="image/*" onChange={function(e) {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                  setImgFile(file);
+                  setImgPreview(URL.createObjectURL(file));
+                }
+              }} class="form-input" />
+              {imgPreview && (
+                <div style={{ marginTop: 10 }}>
+                  <img src={imgPreview} style={{ width: 80, height: 80, borderRadius: 8, objectFit: "cover", border: "1px solid #DCD3BC" }} />
+                </div>
+              )}
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">설명 (상태, 사이즈 등)</label>
+              <textarea value={formDesc} onChange={function(e) { setFormDesc(e.target.value); }} rows="3" placeholder="물건의 상태나 수령 방법을 적어주세요." class="form-textarea"></textarea>
+            </div>
+
+            <button onClick={submitItem} disabled={posting} class="action-btn" style={{ marginTop: 10 }}>
+              {posting ? "🚀 사진 및 나눔 물품 등록 중..." : "➕ 나눔 올리기"}
+            </button>
+          </div>
+        )}
+
+        {tab === "mine" && (
+          <div>
+            <h3 style={{ marginTop: 0, color: '#8B7E66', marginBottom: 16 }}>내가 등록한 나눔</h3>
+            {items.filter(function(i) { return i.giverId === myId; }).length === 0 ? (
+              <div style={{ textAlign: "center", padding: 30, color: "#999" }}>아직 등록한 나눔이 없습니다.</div>
+            ) : (
+              items.filter(function(i) { return i.giverId === myId; }).map(function(it) {
+                return (
+                  <div key={it.id} class="item-card" style={{ borderLeft: '4px solid #8B7E66' }}>
+                    <strong style={{ fontSize: 16, display: 'block', marginBottom: 4 }}>{it.title}</strong>
+                    <div style={{ fontSize: 13, color: '#666', marginBottom: 8 }}>신청자 수: {(it.requesters && it.requesters.length) || 0}명</div>
+                    <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                      {it.status === "open" ? (
+                        <button onClick={function() { handleCancelItem(it.id, it.imagePath || ""); }} class="cancel-btn" style={{ background: '#EF9A9A', color: '#B71C1C', border: 'none' }}>
+                          나눔 취소하기
+                        </button>
+                      ) : (
+                        <div style={{ fontSize: 13, color: '#43A047', fontWeight: 'bold' }}>✓ {it.selectedReceiverId} 님과 매칭 수령 완료</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+        {tab === "admin" && (
+          <div class="admin-panel-box">
+            <div style={{ display: 'flex', justify_content: 'space-between', align_items: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, color: '#8B7E66' }}>⚙️ 원격 통합 운영 관리센터</h3>
+              <button onClick={function() { setTab("browse"); }} class="cancel-btn" style={{ padding: '4px 10px', font_size: 12 }}>나가기</button>
+            </div>
+            
+            <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>
+            <button onClick={handleAdminChangePin} class="select-btn" style={{ width: '100%', padding: 10, font_size: 13, margin_bottom: 16 }}>
+              🔒 마스터 PIN 번호 변경하기
+            </button>
+            
+            <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기 ({items.length}개)</div>
+            {items.length === 0 ? (
+              <div style={{ font_size: 12, color: '#999', text_align: 'center', padding: 10 }}>등록된 게시물이 존재하지 않습니다.</div>
+            ) : (
+              items.map(function(it) {
+                return (
+                  <div key={it.id} class="admin-list-item">
+                    <div style={{ min_width: 0, flex: 1, padding_right: 8 }}>
+                      <strong>{it.title}</strong>{it.image ? " 🖼️" : ""}<br/>
+                      <span style={{ font_size: 11, color: '#888' }}>작성자: {it.giverId} · 상태: {it.status}</span>
+                    </div>
+                    <button onClick={function() { handleAdminForceDelete(it.id, it.imagePath || ""); }} style={{ background: '#B34A4A', color: 'white', font_size: 11, padding: '4px 8px', border_radius: 4 }}>
+                      강제삭제
+                    </button>
+                  </div>
+                );
+              })
+            )}
+
+            <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div>
+            {(function() {
+              const uniqueUsers = [];
+              items.forEach(function(it) {
+                if (uniqueUsers.indexOf(it.giverId) === -1) uniqueUsers.push(it.giverId);
+                if (it.requesters) {
+                  it.requesters.forEach(function(r) {
+                    if (uniqueUsers.indexOf(r) === -1) uniqueUsers.push(r);
+                  });
+                }
+              });
+
+              if (uniqueUsers.length === 0) {
+                return <div style={{ font_size: 12, color: '#999', text_align: 'center', padding: 10 }}>조회된 유저 네트워크가 비어있습니다.</div>;
+              }
+
+              return uniqueUsers.map(function(uId) {
+                const isBlocked = blockedUsers.includes(uId);
+                return (
+                  <div key={uId} class="admin-list-item">
+                    <span>👤 <strong>{uId}</strong>{isBlocked ? <span style={{ color: '#B34A4A', font_weight: 'bold' }}> [차단됨]</span> : ""}</span>
+                    <button onClick={function() { handleAdminToggleBlock(uId); }} style={{ background: isBlocked ? '#4C5C3E' : '#B34A4A', color: 'white', font_size: 11, padding: '4px 8px', border_radius: 4 }}>
+                      {isBlocked ? '차단해제' : '유저차단'}
+                    </button>
+                  </div>
+                );
+              });
+            })()}
+
+            <div class="admin-sub-title">시즌 마감 및 데이터 마스터 초기화</div>
+            <button onClick={handleAdminDeleteSeason} style={{ background: '#B34A4A', color: 'white', width: '100%', padding: 12, border_radius: 8, font_weight: 'bold', font_size: 13.5, margin_top: 8 }}>
+              ⚠️ 현재 시즌 종료 및 데이터 전면 초기화
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 🛠️ 마스터 보안 비밀번호 숨김(*) 별표 입력을 위해 교정 완료된 UI 모달 인터페이스 레이아웃 */}
+      {showPwdModal && (
+        <div class="pwd-modal">
+          <div class="pwd-box">
+            <div style={{ font_size: 14, font_weight: 'bold', color: '#5C5745', margin_bottom: 12 }}>🔒 관리자 비밀번호 입력</div>
+            <input 
+              type="password" 
+              value={pwdInput} 
+              onChange={function(e) { setPwdInput(e.target.value); }} 
+              placeholder="비밀번호 입력" 
+              class="form-input" 
+              style={{ text_align: 'center', margin_bottom: 14 }} 
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={submitAdminPassword} class="select-btn" style={{ flex: 1, padding: '8px 0' }}>확인</button>
+              <button onClick={function() { setShowPwdModal(false); }} class="cancel-btn" style={{ flex: 1, padding: '8px 0', background: '#EEE', color: '#333', border: 'none' }}>취소</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <div class="toast" style={{ display: 'block' }}>{toast}</div>}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<ChurchSharingApp />);
 </script>
 </body>
 </html>

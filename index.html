@@ -739,11 +739,34 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
 
 {/* 📍 이 아래 구역부터 원본의 ) : ( 분기 내부 레이아웃이 자연스럽게 이어집니다 */}
 {openPanel[it.id] && (
-  <div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14, marginTop: 10 }}>
+{/* 🛠️ 삼항 연산자 구조를 해치지 않도록 전체 단락을 감싸 안은 가로 정렬 형태로 수정 완료 */}
+<div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", marginBottom: openPanel[it.id] ? 10 : 0 }}>
+  {it.requesters?.length > 0 && !openPanel[it.id] && (
+    <button onClick={() => togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>
+      {it.type === "want" ? "선택하기" : "받을 분 선택하기"} ›
+    </button>
+  )}
+
+  {/* 🛠️ 분기점 바깥 안전지대에 상주하여 빈 페이지 오류를 원천 차단하는 나눔 취소하기 단추 */}
+  {!openPanel[it.id] && (
+    <button onClick={() => {
+      if (confirm("이 물품 등록을 취소하시겠습니까? 목록과 이미지 서버에서 완전히 삭제됩니다.")) {
+        window.fb.deleteItem(it.id, it.imagePath).then(() => {
+          alert("등록이 취소되었습니다.");
+        });
+      }
+    }} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#FAF6EE", color: "#B34A4A", fontWeight: 600 }}>
+      나눔 취소하기
+    </button>
+  )}
+</div>
+
+{/* 📍 이 아래 구역부터 원래 파일에 있던 분기 양식이 자연스럽게 이어지도록 처리합니다 */}
+{openPanel[it.id] && it.requesters?.length > 0 && (
+  <div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14 }}>
     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>
       {it.type === "want" ? "나눔해주실 분을 골라주세요" : "받으실 분을 골라주세요"}
     </div>
-
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
                         {it.requesters.map((r) => (
                           <button key={r} onClick={() => setPickedReceiver((p) => ({ ...p, [it.id]: r }))}

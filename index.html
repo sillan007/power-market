@@ -1,11 +1,8 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (Firebase 연동 버전)
-
-  사용 방법
-  1) Firebase 콘솔(://google.com)에서 새 프로젝트 생성 → Firestore Database 및 Storage 사용 설정
-  2) 프로젝트 설정 > 일반 > "내 앱" 에서 웹 앱 추가 후 나오는 firebaseConfig 값을
-     아래 firebaseConfig 객체에 그대로 붙여넣기
-  3) 이 파일을 index.html 이름으로 GitHub 저장소에 업로드 → Settings > Pages 에서 배포
+  나눔의 자리 - 교회 나눔 웹앱 (순수 표준 자바스크립트 초고속 구동 버전)
+  
+  사용 방법:
+  1부부터 4부까지 하나의 파일로 메모장에 순서대로 쭉 이어서 붙여넣고 index.html로 저장하세요.
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -19,19 +16,65 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #EDE7D6; }
   body { font-family: 'Noto Sans KR', -apple-system, sans-serif; color: #2A2823; }
-  button { font-family: inherit; cursor: pointer; border: none; }
+  button { font-family: inherit; cursor: pointer; border: none; transition: opacity 0.2s; }
+  button:active { opacity: 0.7; }
   input, select, textarea { font-family: inherit; outline: none; }
-  #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FAF6EE; box-shadow: 0 0 0 1px #ECE4D2; position: relative; padding-bottom: 60px; }
-  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 9999; }
+  
+  #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FAF6EE; box-shadow: 0 0 0 1px #ECE4D2; position: relative; padding-bottom: 80px; }
+  .header-bar { background: #8B7E66; color: white; padding: 24px 20px; text-align: center; }
+  .header-title { margin: 0; fontSize: 22px; font-family: 'Noto Serif KR', serif; }
+  .header-info { fontSize: 13px; opacity: 0.85; marginTop: 5px; }
+  
+  .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
+  .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
+  .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
+  
+  .content-area { padding: 20px 16px; }
+  .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+  .card-top { margin-bottom: 6px; display: flex; align-items: center; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
+  .badge.open { background: #EAF0E3; color: #4C5C3E; }
+  .badge.matched { background: #F3E9C9; color: #7A6420; }
+  
+  .form-group { margin-bottom: 18px; }
+  .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
+  .form-input { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14.5px; }
+  .form-textarea { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14px; resize: none; line-height: 1.5; }
+  
+  .cat-box-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .cat-chip { padding: 8px 12px; border-radius: 20px; border: 1px solid #DCD3BC; background: #FDFBF5; color: #6B6455; font-size: 13px; font-weight: 600; }
+  .cat-chip.selected { border: 1.5px solid #5C6E4B; background: #EAF0E3; color: #4C5C3E; }
+  
+  .action-btn { width: 100%; padding: 13px; border-radius: 9px; background: #5C6E4B; color: #F6F2E8; font-size: 15px; font-weight: 700; text-align: center; }
+  .cancel-btn { background: #FAF6EE; color: #B34A4A; border: 1px solid #D8CFB8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
+  .select-btn { background: #5C6E4B; color: #F6F2E8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
+  .confirm-btn { width: 100%; padding: 9px; background: #4C5C3E; color: white; font-weight: 600; border-radius: 4px; }
+  
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 9999; display: none; }
 </style>
 </head>
 <body>
-<div id="root"></div>
 
-<script src="https://unpkg.com"></script>
-<script src="https://unpkg.com"></script>
-<script src="https://unpkg.com"></script>
+<div id="root">
+  <!-- 상단 레이아웃바 브라운 헤더 고정 -->
+  <div class="header-bar">
+    <h1 class="header-title">나눔의 자리</h1>
+    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">로딩중...</span> · 시즌 <span id="display-season">1</span></div>
+  </div>
 
+  <!-- 탭 메뉴 전환 단추 영역 -->
+  <div class="tab-container">
+    <button class="tab-btn active" id="tab-browse-btn" onclick="switchTab('browse')">둘러보기</button>
+    <button class="tab-btn" id="tab-share-btn" onclick="switchTab('share')">나눔하기</button>
+    <button class="tab-btn" id="tab-mine-btn" onclick="switchTab('mine')">나의 나눔</button>
+  </div>
+
+  <!-- 메인 내용 전개 본문 구역 -->
+  <div class="content-area" id="content-container"></div>
+</div>
+
+<div id="toast-message" class="toast"></div>
+<!-- 파이어베이스 모듈 스크립트 결속 연동 및 API 바인딩 -->
 <script type="module">
   import { initializeApp } from "https://gstatic.com";
   import {
@@ -74,7 +117,7 @@
         try {
           await deleteObject(sRef(storage, imagePath));
         } catch (e) {
-          console.error("Storage 실물 파기 실패:", e);
+          console.error("Storage 이미지 삭제 실패:", e);
         }
       }
     },
@@ -119,302 +162,286 @@
     },
   };
   window.__fbReady = true;
+  if (window.__fbCallback) window.__fbCallback();
 </script>
-<script type="text/babel">
-const { useEffect, useState, useRef } = React;
+<script>
+  let fbApi = null;
+  let myId = null;
+  let season = 1;
+  let currentTab = 'browse';
+  let allItems = [];
+  let showDone = false;
+  let selectedCategory = 'living';
 
-const CATEGORIES = [
-  { key: "living", label: "생활용품", emoji: "🪴" },
-  { key: "clothes", label: "의류", emoji: "🧥" },
-  { key: "books", label: "도서", emoji: "📚" },
-  { key: "kids", label: "유아/아동", emoji: "🧸" },
-  { key: "kitchen", label: "주방용품", emoji: "🍽️" },
-  { key: "electronics", label: "가전/전자", emoji: "🔌" },
-  { key: "etc", label: "기타", emoji: "🎁" },
-];
-const ID_PREFIX = "선민";
-const ADMIN_PIN = "tss102900!"; 
+  const CATEGORIES = [
+    { key: "living", label: "생활용품", emoji: "🪴" },
+    { key: "clothes", label: "의류", emoji: "🧥" },
+    { key: "books", label: "도서", emoji: "📚" },
+    { key: "kids", label: "유아/아동", emoji: "🧸" },
+    { key: "kitchen", label: "주방용품", emoji: "🍽️" },
+    { key: "electronics", label: "가전/전자", emoji: "🔌" },
+    { key: "etc", label: "기타", emoji: "🎁" },
+  ];
+  const ID_PREFIX = "선민";
 
-function emojiFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.emoji || "🎁"; }
-function labelFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.label || "기타"; }
-function fmtDate(d) {
-  if (!d) return "";
-  const dt = new Date(d + "T00:00:00");
-  const days = ["일", "월", "화", "수", "목", "금", "토"];
-  return (dt.getMonth() + 1) + "월 " + dt.getDate() + "일 (" + days[dt.getDay()] + ")";
-}
+  function emojiFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.emoji || "🎁"; }
+  function labelFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.label || "기타"; }
 
-function waitForFb() {
-  return new Promise((resolve) => {
-    if (window.__fbReady) return resolve(window.fb);
-    const t = setInterval(() => {
-      if (window.__fbReady) { clearInterval(t); resolve(window.fb); }
-    }, 30);
-  });
-}
+  function showToast(msg) {
+    const el = document.getElementById('toast-message');
+    el.innerText = msg;
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display = 'none'; }, 2200);
+  }
 
-function BrowseList({ items, myId, onRequest, onCancel, showDone, setShowDone }) {
-  const filteredItems = showDone ? items : items.filter(it => it.status !== "matched");
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-        <button onClick={() => setShowDone(!showDone)} style={{ background: '#ECE4D2', padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 12, color: '#555', fontWeight: 600 }}>
-          {showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
-        </button>
-      </div>
-      {filteredItems.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40, color: "#A39C8C" }}>📦 등록된 나눔 물품이 없습니다.</div>
-      ) : (
-        filteredItems.map((it) => {
-          const isMine = it.giverId === myId;
-          const requested = it.requesters?.includes(myId);
-          return (
-            <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
-              <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 10, background: "#F1ECDD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                  {emojiFor(it.category)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-                    <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, background: it.status === "open" ? "#EAF0E3" : "#F3E9C9", color: it.status === "open" ? "#4C5C3E" : "#7A6420", padding: "3px 8px", borderRadius: 5 }}>
-                      {it.status === "open" ? "나눔중" : "매칭완료"}
-                    </span>
-                  </div>
-                  {it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}</div>}
-                  
-                  {/* 🛠️ 업로드된 사진이 문서 주소에 존재할 때 한 장 노출 */}
-                  {it.image && (
-                    <div style={{ marginTop: 8, marginBottom: 8 }}>
-                      <img src={it.image} style={{ width: "100%", maxHeight: 220, borderRadius: 8, objectFit: "cover", border: "1px solid #EFEAE2" }} />
-                    </div>
-                  )}
-
-                  <div style={{ fontSize: 11.5, color: "#A39C8C", marginBottom: 8 }}>
-                    {labelFor(it.category)} · {it.status === "open" ? "신청 " + (it.requesters?.length || 0) + "명" : "전달 완료"}
-                  </div>
-                  {!isMine && it.status === "open" && (
-                    requested ? (
-                      <button onClick={() => onCancel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#F6F2E8", color: "#6B6455", fontWeight: 600 }}>신청 취소하기</button>
-                    ) : (
-                      <button onClick={() => onRequest(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받고 싶어요</button>
-                    )
-                  )}
-                  {isMine && <div style={{ fontSize: 12, color: "#A39C8C" }}>내가 올린 나눔이에요</div>}
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}
-function CreateForm({ form, setForm, onSubmit, posting, imgFile, setImgFile, imgPreview, setImgPreview }) {
-  return (
-    <div>
-      <div style={{ marginBottom: 18 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>무엇을 나누시겠어요?</label>
-        <input value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} placeholder="예: 아이 겨울 외투 (110cm)" style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14.5 }} />
-      </div>
+  // 🛠️ 어떤 파라미터나 링크 주소를 타고 들어오든 1기기 1ID 무조건 강제 고정하는 초기 식별 엔진
+  function initApp() {
+    fbApi = window.fb;
+    fbApi.getSeason().then((currentSeason) => {
+      season = currentSeason;
+      document.getElementById('display-season').innerText = season;
       
-      <div style={{ marginBottom: 18 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>물품 사진 (최대 1장)</label>
-        <input type="file" accept="image/*" onChange={(e) => {
-          const file = e.target.files;
-          if (file) {
-            setImgFile(file);
-            setImgPreview(URL.createObjectURL(file));
-          }
-        }} style={{ fontSize: 13, color: "#6B6455", marginBottom: 12 }} />
-        {imgPreview && (
-          <div style={{ marginTop: 10, marginBottom: 12 }}>
-            <img src={imgPreview} style={{ width: 80, height: 80, borderRadius: 8, objectFit: "cover", border: "1px solid #DCD3BC" }} />
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginBottom: 18 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>간단한 설명 (선택)</label>
-        <textarea value={form.desc} onChange={(e) => setForm(f => ({ ...f, desc: e.target.value }))} placeholder="상태, 크기 등을 적어주세요" rows={3} style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14, resize: "none", lineHeight: 1.5 }} />
-      </div>
-      <div style={{ marginBottom: 24 }}>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 9 }}>분류</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {CATEGORIES.map((c) => (
-            <button key={c.key} onClick={() => setForm(f => ({ ...f, category: c.key }))} style={{ padding: "8px 12px", borderRadius: 20, border: form.category === c.key ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: form.category === c.key ? "#EAF0E3" : "#FDFBF5", color: form.category === c.key ? "#4C5C3E" : "#6B6455", fontSize: 13, fontWeight: 600 }}>{c.emoji} {c.label}</button>
-          ))}
-        </div>
-      </div>
-      <button onClick={onSubmit} disabled={posting} style={{ width: "100%", padding: "13px", borderRadius: 9, background: "#5C6E4B", color: "#F6F2E8", fontSize: 15, fontWeight: 700 }}>
-        {posting ? "🚀 사진 및 물품 등록 중..." : "➕ 나눔 올리기"}
-      </button>
-    </div>
-  );
-}
-
-function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedReceiver, pickedDate, setPickedDate, onConfirm, onCancelItem }) {
-  if (items.length === 0) return <div style={{ textAlign: "center", padding: 40, color: "#A39C8C" }}>🎁 아직 등록한 나눔이 없습니다.</div>;
-  return (
-    <div>
-      {items.map((it) => (
-        <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, background: it.status === "open" ? "#EAF0E3" : "#F3E9C9", color: it.status === "open" ? "#4C5C3E" : "#7A6420", padding: "3px 8px", borderRadius: 5 }}>{it.status === "open" ? "나눔중" : "매칭완료"}</span>
-          </div>
-          {it.status === "open" && (
-            <div>
-              <div style={{ fontSize: 12.5, color: "#77715F", marginBottom: 10 }}>{it.requesters?.length ? `${it.requesters.length}명이 받고 싶어해요` : "아직 신청한 분이 없어요"}</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {it.requesters?.length > 0 && !openPanel[it.id] && <button onClick={()=>togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>받을 분 선택하기 ›</button>}
-                {!openPanel[it.id] && <button onClick={()=>onCancelItem(it.id, it.imagePath)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#FAF6EE", color: "#B34A4A", fontWeight: 600 }}>나눔 취소하기</button>}
-              </div>
-              {openPanel[it.id] && (
-                <div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14, marginTop: 10 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>받으실 분을 골라주세요</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
-                    {it.requesters?.map(r => <button key={r} onClick={()=>setPickedReceiver(p=>({...p, [it.id]:r}))} style={{ padding: "7px 12px", borderRadius: 20, border: pickedReceiver[it.id] === r ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: pickedReceiver[it.id] === r ? "#EAF0E3" : "#FDFBF5", color: pickedReceiver[it.id] === r ? "#4C5C3E" : "#6B6455", fontSize: 13, fontWeight: 600 }}>{r}</button>)}
-                  </div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>전달 날짜 지정</div>
-                  <input type="date" onChange={(e)=>setPickedDate(p=>({...p, [it.id]:e.target.value}))} style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #DCD3BC", marginBottom: 12 }} />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={()=>onConfirm(it.id)} style={{ flex: 1, padding: "9px", borderRadius: 7, background: "#4C5C3E", color: "white", fontWeight: 600 }}>확정하기</button>
-                    <button onClick={()=>togglePanel(it.id)} style={{ padding: "9px 14px", borderRadius: 7, border: "1px solid #C4B9A3", color: "#6B6455" }}>닫기</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {it.status === "matched" && <div style={{ fontSize: 13.5, color: "#43A047", marginTop: 4, fontWeight: "bold" }}>✓ {it.selectedReceiverId} 님에게 {fmtDate(it.dropOffDate)} 수령 예정</div>}
-        </div>
-      ))}
-    </div>
-  );
-}
-function ChurchSharingApp() {
-  const [fbApi, setFbApi] = useState(null);
-  const [myId, setMyId] = useState(null);
-  const [season, setSeason] = useState(1);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [pin, setPin] = useState("");
-  const [tab, setTab] = useState("browse");
-  const [items, setItems] = useState([]);
-  const [ready, setReady] = useState(false);
-  const [showDone, setShowDone] = useState(false);
-  const [form, setForm] = useState({ title: "", desc: "", category: "living" });
-  const [posting, setPosting] = useState(false);
-  const [imgFile, setImgFile] = useState(null);
-  const [imgPreview, setImgPreview] = useState("");
-  const [openPanel, setOpenPanel] = useState({});
-  const [pickedReceiver, setPickedReceiver] = useState({});
-  const [pickedDate, setPickedDate] = useState({});
-
-  useEffect(() => {
-    let unsub = null;
-    waitForFb().then((fb) => {
-      setFbApi(fb);
-      fb.getSeason().then((currentSeason) => {
-        let id = null;
-        try {
-          /* 🛠️ 어떤 공유 주소 링크 파라미터로 타고 들어오든 1기기 1ID로 완벽 고정하는 추적 복구 장치 */
-          const raw = window.localStorage.getItem("my-anon-id");
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.season === currentSeason) id = parsed.id;
-          }
-        } catch (e) {}
-        if (!id) {
-          fb.nextId(currentSeason).then((n) => {
-            id = ID_PREFIX + n;
-            window.localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
-            setMyId(id);
-            setSeason(currentSeason);
-            unsub = fb.watchItems(list => setItems(list));
-            setReady(true);
-          });
-        } else {
-          setMyId(id);
-          setSeason(currentSeason);
-          unsub = fb.watchItems(list => setItems(list));
-          setReady(true);
+      let id = null;
+      try {
+        const raw = window.localStorage.getItem("my-anon-id");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.season === currentSeason) id = parsed.id;
         }
-      });
-    });
-    return () => { if (unsub) unsub(); };
-  }, []);
+      } catch (e) {}
 
-  const submitItem = async () => {
-    if (!form.title.trim()) return;
-    setPosting(true);
-    try {
-      let url = "", path = "";
-      if (imgFile) {
-        const res = await fbApi.uploadImage(imgFile, myId);
-        url = res.url; path = res.imagePath;
+      if (!id) {
+        fbApi.nextId(currentSeason).then((n) => {
+          id = ID_PREFIX + n;
+          window.localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
+          myId = id;
+          finishInit();
+        });
+      } else {
+        myId = id;
+        finishInit();
       }
-      await fbApi.addItem({ title: form.title.trim(), desc: form.desc.trim(), category: form.category, giverId: myId, requesters: [], status: "open", image: url, imagePath: path });
-      setForm({ title: "", desc: "", category: "living" });
-      setImgFile(null); setImgPreview("");
-      setTab("browse");
-    } catch (e) {}
-    setPosting(false);
+    });
+  }
+
+  function finishInit() {
+    document.getElementById('display-my-id').innerText = myId;
+    fbApi.watchItems((list) => {
+      allItems = list;
+      renderCurrentTab();
+    });
+  }
+
+  window.__fbCallback = function() {
+    if (window.fb) initApp();
   };
 
-  const handleCancelItem = async (itemId, imagePath) => {
-    if (confirm("이 물품 등록을 취소하시겠습니까? 목록과 사진 서버에서 완전히 삭제됩니다.")) {
-      await fbApi.deleteItem(itemId, imagePath);
+  if (window.fb) initApp();
+
+  function switchTab(tabName) {
+    currentTab = tabName;
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (tabName === 'browse') document.getElementById('tab-browse-btn').classList.add('active');
+    if (tabName === 'share') document.getElementById('tab-share-btn').classList.add('active');
+    if (tabName === 'mine') document.getElementById('tab-mine-btn').classList.add('active');
+    renderCurrentTab();
+  }
+</script>
+<script>
+  function renderCurrentTab() {
+    const container = document.getElementById('content-container');
+    if (!container) return;
+    
+    let html = "";
+
+    // 1. 둘러보기 탭 화면 전개
+    if (currentTab === 'browse') {
+      const filtered = showDone ? allItems : allItems.filter(it => it.status !== 'matched' && it.status !== 'done');
+      
+      html += `
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+          <button onclick="toggleShowDone()" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">
+            ${showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기"}
+          </button>
+        </div>
+      `;
+
+      if (filtered.length === 0) {
+        html += `<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 물품이 없습니다.</div>`;
+      } else {
+        filtered.forEach(it => {
+          const isMine = it.giverId === myId;
+          const requested = it.requesters?.includes(myId) || false;
+          
+          html += `
+            <div class="item-card">
+              <div class="card-top">
+                <span class="badge ${it.status === 'open' ? 'open' : 'matched'}">${it.status === 'open' ? '나눔중' : '매칭완료'}</span>
+                <span style="font-size: 18px; margin-left: 4px;">${emojiFor(it.category)}</span>
+                <strong style="margin-left: 6px; font-size: 16px;">${it.title}</strong>
+              </div>
+              <p style="color: #666; font-size: 14px; margin: 8px 0; line-height: 1.4;">${it.desc || "상세 설명이 없습니다."}</p>
+              
+              /* 🛠️ 사진이 첨부된 글이면 둘러보기 화면에 실물 이미지 한 장 노출 */
+              ${it.image ? `
+                <div style="margin-top: 8px; margin-bottom: 8px;">
+                  <img src="\${it.image}" style="width: 100%; max-height: 220px; border-radius: 8px; object-fit: cover; border: 1px solid #EFEAE2;" />
+                </div>
+              ` : ''}
+
+              <div style="font-size: 12px; color: #999; margin-bottom: 8px;">분류: ${labelFor(it.category)} · 기부자: ${it.giverId}</div>
+              
+              <div style="margin-top: 10px;">
+                ${it.status === 'open' ? `
+                  \${isMine ? `
+                    <div style="font-size: 12px; color: #A39C8C;">내가 올린 나눔이에요</div>
+                  ` : `
+                    ${requested ? `
+                      <button onclick="handleCancelRequest('\${it.id}')" class="cancel-btn" style="width: 100%;">신청 취소하기</button>
+                    ` : `
+                      <button onclick="handleRequest('\({it.id}')" class="select-btn" style="width: 100\%;">받고 싶어요 (\){it.requesters?.length || 0}명)</button>
+                    `}
+                  `}
+                ` : `
+                  <div style="background: #F5F5F5; padding: 8px; border-radius: 6px; font-size: 13px; color: #43A047; font-weight: bold;">
+                    🎉 \${it.selectedReceiverId} 님과 매칭완료!
+                  </div>
+                `}
+              </div>
+            </div>
+          `;
+        });
+      }
     }
-  };
 
-  const confirmMatch = async (itemId) => {
-    const r = pickedReceiver[itemId]; const d = pickedDate[itemId];
-    if (!r || !d) return;
-    await fbApi.updateItem(itemId, { selectedReceiverId: r, dropOffDate: d, status: "matched" });
-  };
-
-  if (!ready) return <div style={{ padding: 40, textAlign: 'center', color: '#8B7E66' }}>주님의 자리로 접속 중...</div>;
-
-  const filteredItems = showDone ? items : items.filter(it => it.status !== "matched");
-
-  return (
-    <div style={{ paddingBottom: 40 }}>
-      {/* 🛠️ 오타가 발생했던 상단 타이틀 레이아웃 구조를 완벽하게 마감 정돈 완료 */}
-      <div style={{ background: "#8B7E66", color: "white", padding: "24px 20px", textAlign: "center" }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontFamily: "'Noto Serif KR', serif" }}>나눔의 자리</h1>
-        <div style={{ fontSize: 13, opacity: 0.85, marginTop: 5 }}>
-          내 ID: <span style={{ fontWeight: 600 }}>{myId}</span> · 시즌 {season}
-        </div>
-      </div>
-      
-      <div style={{ display: "flex", background: "#F0EAE1", borderBottom: "1px solid #ECE4D2" }}>
-        <button onClick={() => setTab("browse")} style={{ flex: 1, padding: 12, background: tab === "browse" ? "#FAF6EE" : "none", color: tab === "browse" ? "#2A2823" : "#A39C8C", fontWeight: tab === "browse" ? 600 : 500, fontSize: 13.5 }}>둘러보기</button>
-        <button onClick={() => setTab("share")} style={{ flex: 1, padding: 12, background: tab === "share" ? "#FAF6EE" : "none", color: tab === "share" ? "#2A2823" : "#A39C8C", fontWeight: tab === "share" ? 600 : 500, fontSize: 13.5 }}>나눔하기</button>
-        <button onClick={() => setTab("mine")} style={{ flex: 1, padding: 12, background: tab === "mine" ? "#FAF6EE" : "none", color: tab === "mine" ? "#2A2823" : "#A39C8C", fontWeight: tab === "mine" ? 600 : 500, fontSize: 13.5 }}>나의 나눔</button>
-      </div>
-      <div style={{ padding: 16 }}>
-        {tab === "browse" && <BrowseList items={items} myId={myId} showDone={showDone} setShowDone={setShowDone} onRequest={(id)=>fbApi.requestItem(id, myId)} onCancel={(id)=>fbApi.cancelRequest(id, myId)} />}
-        {tab === "share" && <CreateForm form={form} setForm={setForm} onSubmit={submitItem} posting={posting} imgFile={imgFile} setImgFile={setImgFile} imgPreview={imgPreview} setImgPreview={setImgPreview} />}
-        {tab === "mine" && <MineList items={items.filter(i=>i.giverId===myId)} openPanel={openPanel} togglePanel={(id)=>setOpenPanel(p=>({...p, [id]:!p[id]}))} pickedReceiver={pickedReceiver} setPickedReceiver={setPickedReceiver} pickedDate={pickedDate} setPickedDate={setPickedDate} onConfirm={confirmMatch} onCancelItem={handleCancelItem} />}
-      </div>
-      
-      <div style={{ margin: "24px 16px 0 16px", padding: "16px", background: "#F1ECDD", borderRadius: 10, border: "1px solid #ECE4D2" }}>
-        <div onClick={() => setAdminOpen(!adminOpen)} style={{ fontSize: 13, color: "#7C7566", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-          <span>⚙️ 관리자 메뉴</span><span>{adminOpen ? "닫기 ▲" : "열기 ▼"}</span>
-        </div>
-        {adminOpen && (
-          <div style={{ marginTop: 12, borderTop: "1px dashed #DCD3BC", paddingTop: 12 }}>
-            <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="비밀번호" style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid #DCD3BC", fontSize: 13, background: "#FAF6EE", marginBottom: 8 }} />
-            <button onClick={() => { if(pin===ADMIN_PIN && confirm("초기화하시겠습니까?")) fbApi.startNewSeason(season).then(n=>setSeason(n)); }} style={{ width: "100%", padding: "10px", background: "#A35C4B", color: "white", borderRadius: 6, fontSize: 12.5, fontWeight: 600 }}>시즌 초기화</button>
+    // 2. 나눔하기 등록 폼 화면 전개
+    else if (currentTab === 'share') {
+      html += `
+        <div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">
+          <h3 style="margin-top: 0; color: #8B7E66;">나눔 물품 등록</h3>
+          
+          <div class="form-group">
+            <label class="form-label">물품 이름</label>
+            <input type="text" id="form-title" placeholder="예: 아동용 도서 세트" class="form-input" />
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<ChurchSharingApp />);
+          /* 🛠️ 최대 1장만 등록 가능한 물품 파일 첨부 인터페이스 유닛 배치 */
+          <div class="form-group">
+            <label class="form-label">물품 사진 (최대 1장)</label>
+            <input type="file" id="form-image" accept="image/*" class="form-input" onchange="previewImage(this)" />
+            <div id="image-preview-area" style="margin-top: 10px; display: none;">
+              <img id="form-preview-img" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #DCD3BC;" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">설명 (상태, 사이즈 등)</label>
+            <textarea id="form-desc" rows="3" placeholder="물건의 상태나 수령 방법을 적어주세요." class="form-textarea"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">분류</label>
+            <div class="cat-box-grid">
+              ${CATEGORIES.map(c => `
+                <button onclick="selectCategory('\${c.key}')" class="cat-chip selectedCategory === c.key ? 'selected' : ''" id="cat-chip-{c.key}">
+                  c.emoji {c.label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <button onclick="handlePostItem()" class="action-btn" id="post-submit-btn" style="margin-top: 10px;">나눔 올리기</button>
+        </div>
+      `;
+    }
+
+    // 3. 나의 나눔 관리 탭 화면 전개
+    else if (currentTab === 'mine') {
+      const myItems = allItems.filter(i => i.giverId === myId);
+      html += `<h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 나눔</h3>`;
+      
+      if (myItems.length === 0) {
+        html += `<div style="text-align: center; padding: 30px 0; color: #999;">아직 등록한 나눔이 없습니다.</div>`;
+      } else {
+        myItems.forEach(it => {
+          html += `
+            <div class="item-card" style="border-left: 4px solid #8B7E66;">
+              <strong style="font-size: 16px; display: block; margin-bottom: 4px;">${it.title}</strong>
+              <div style="font-size: 13px; color: #666; margin-bottom: 8px;">신청자 수: ${it.requesters?.length || 0}명</div>
+              
+              <div style="margin-top: 12px; display: flex; gap: 8px;">
+                ${it.status === 'open' ? `
+                  <button onclick="handleCancelItem('it.id', '{it.imagePath || ''}')" class="cancel-btn" style="background: #EF9A9A; color: #B71C1C; border: none;">
+                    나눔 취소하기
+                  </button>
+                ` : `
+                  <div style="font-size: 13px; color: #43A047; font-weight: bold;">✓ \${it.selectedReceiverId} 님과 매칭 수령 완료</div>
+                `}
+              </div>
+            </div>
+          `;
+        });
+      }
+    }
+
+    container.innerHTML = html;
+  }
+
+  // 데이터베이스 수동 요청 핸들러 바인딩 액션들
+  function toggleShowDone() { showDone = !showDone; renderCurrentTab(); }
+  function selectCategory(cat) { selectedCategory = cat; renderCurrentTab(); }
+  function handleRequest(id) { fbApi.requestItem(id, myId).then(() => showToast("신청이 완료되었어요.")); }
+  function handleCancelRequest(id) { fbApi.cancelRequest(id, myId).then(() => showToast("신청을 취소했어요.")); }
+  
+  function previewImage(input) {
+    const file = input.files[0];
+    if (file) {
+      document.getElementById('image-preview-area').style.display = 'block';
+      document.getElementById('form-preview-img').src = URL.createObjectURL(file);
+    }
+  }
+
+  // 🛠️ 글 올리기 시 이미지 보관소(Storage) 주소 동시 연동 묶음 처리
+  function handlePostItem() {
+    const title = document.getElementById('form-title').value;
+    const desc = document.getElementById('form-desc').value;
+    const fileInput = document.getElementById('form-image');
+    const file = fileInput.files[0];
+
+    if (!title.trim()) { alert("물품 이름을 입력하세요."); return; }
+    
+    const btn = document.getElementById('post-submit-btn');
+    btn.disabled = true;
+    btn.innerText = "🚀 사진 및 나눔 물품 등록 중...";
+
+    if (file) {
+      fbApi.uploadImage(file, myId).then(res => {
+        saveToFirestore(title, desc, res.url, res.imagePath);
+      });
+    } else {
+      saveToFirestore(title, desc, "", "");
+    }
+  }
+
+  function saveToFirestore(title, desc, url, path) {
+    fbApi.addItem({
+      title: title.trim(), desc: desc.trim(), category: selectedCategory,
+      giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
+      image: url, imagePath: path
+    }).then(() => {
+      showToast("나눔 물품이 등록되었어요.");
+      switchTab('browse');
+    });
+  }
+
+  // 🛠️ 기부자가 [나눔 취소] 선택 시 목록 문서는 물론 이미지 서버의 실물 사진까지 추적 폭파 자동 삭제
+  function handleCancelItem(id, imagePath) {
+    if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
+      fbApi.deleteItem(id, imagePath).then(() => {
+        showToast("나눔 등록을 취소했습니다.");
+      });
+    }
+  }
 </script>
 </body>
 </html>

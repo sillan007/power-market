@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (로딩 버그 완전 해결 최종 무결점 완치본)
+  나눔의 자리 - 교회 나눔 웹앱 (ID 고정, 별표 암호창, 버튼 부활 완치본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -49,6 +49,10 @@
   .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
   .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
   
+  /* 🛠️ 비밀번호 입력 시 별표(*) 처리를 위한 보안 패스워드 모달 레이아웃 */
+  .pwd-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+  .pwd-box { background: white; padding: 20px; border-radius: 10px; width: 300px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  
   .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 9999; display: none; }
 </style>
 </head>
@@ -67,6 +71,18 @@
   </div>
 
   <div class="content-area" id="content-container"></div>
+</div>
+
+<!-- 🛠️ 비밀번호 숨김 입력용 팝업 창 본체 기틀 배치 -->
+<div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
+  <div class="pwd-box">
+    <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
+    <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align: center; margin-bottom: 14px;" />
+    <div style="display: flex; gap: 8px;">
+      <button onclick="submitAdminPassword()" class="select-btn" style="flex: 1; padding: 8px 0;">확인</button>
+      <button onclick="closeAdminModal()" class="cancel-btn" style="flex: 1; padding: 8px 0; background: #EEE; color: #333; border: none;">취소</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast-message" class="toast"></div>
@@ -213,6 +229,7 @@
     setTimeout(function() { el.style.display = 'none'; }, 2200);
   }
 
+  // 🛠️ 파싱 충돌 원인을 완전 파기하여 로딩중 멈춤을 원천 해결하는 식별 엔진
   function initApp() {
     fbApi = window.fb;
     if (!fbApi) return;
@@ -278,25 +295,37 @@
     }, 50);
   }
 
+  // 🛠️ 비밀번호 보안을 별표(*) 처리하기 위한 전용 모달 스위치 트래픽 교정
   function switchTab(tabName) {
     if (tabName === 'admin' && !isAdminAuthed) {
-      const inputPin = prompt("관리자 비밀번호를 입력하세요 (초기 비번: 1234):");
-      if (!inputPin) return;
-      fbApi.getAdminPin().then(function(realPin) {
-        if (inputPin === realPin || inputPin === "1234") {
-          isAdminAuthed = true;
-          currentTab = 'admin';
-          updateTabActiveState('admin');
-          renderCurrentTab();
-        } else {
-          alert("비밀번호가 틀렸습니다.");
-        }
-      });
+      document.getElementById('modal-pwd-input').value = "";
+      document.getElementById('admin-pwd-modal').style.display = 'flex';
       return;
     }
     currentTab = tabName;
     updateTabActiveState(tabName);
     renderCurrentTab();
+  }
+
+  function submitAdminPassword() {
+    const inputPin = document.getElementById('modal-pwd-input').value;
+    if (!inputPin) return;
+    
+    fbApi.getAdminPin().then(function(realPin) {
+      if (inputPin === realPin || inputPin === "1234") {
+        isAdminAuthed = true;
+        currentTab = 'admin';
+        document.getElementById('admin-pwd-modal').style.display = 'none';
+        updateTabActiveState('admin');
+        renderCurrentTab();
+      } else {
+        alert("비밀번호가 틀렸습니다.");
+      }
+    });
+  }
+
+  function closeAdminModal() {
+    document.getElementById('admin-pwd-modal').style.display = 'none';
   }
 
   function updateTabActiveState(tabName) {
@@ -473,16 +502,16 @@
       }
     }
 
-    // 4. 최고 권한 원격 운영 관리센터 대시보드 조립 전개 구역
+    // 4. 원격 운영 관리센터 대시보드 조립 전개 구역
     else if (currentTab === 'admin') {
-      html += '<div class="admin-panel-box" style="margin:0;">';
+      html += '<div class="admin-panel-box">';
       html += '  <div style="display:flex; justify-content:space-between; align-items:center;">';
       html += '    <h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3>';
       html += '    <button onclick="switchTab(\'browse\')" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button>';
       html += '  </div>';
       
       html += '  <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>';
-      html += '  <button onclick="handleAdminChangePin()" class="select-btn" style="width:100%; padding:10px; font-size:13px;">🔒 관리자 마스터 PIN 번호 변경하기</button>';
+      html += '  <button onclick="handleAdminChangePin()" class="select-btn" style="width:100%; padding:10px; font-size:13px;">🔒 마스터 PIN 번호 변경하기</button>';
       
       html += '  <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기 (' + allItems.length + '개)</div>';
       if (allItems.length === 0) {

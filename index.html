@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (참조 에러 및 탭 멈춤 현상 100% 완치본)
+  나눔의 자리 - 교회 나눔 웹앱 (리스너 위치 에러 및 탭 멈춤 현상 100% 완치판)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -229,7 +229,7 @@
     setTimeout(function() { el.style.display = 'none'; }, 2200);
   }
 
-  // 🛠️ 파이어베이스 연동 지연으로 인한 셧다운을 방지하고 무조건 선제 구동을 완료하는 추적 엔진
+  // 🛠️ 백엔드 연동 상태와 무관하게 레이아웃과 제어 스위치를 즉시 조립해 내는 안전 가동기
   function tryInitApp() {
     if (!window.__fbReady || !window.fbApi) return;
     
@@ -250,7 +250,7 @@
         id = window.localStorage.getItem("my-anon-id");
       } catch (e) {}
 
-      // 🛠️ 무한 락 현상을 파괴하기 위해 기기 고유 난수 일련번호를 즉시 발급 및 정착
+      // 🛠️ 서버 트랜잭션 마비를 막기 위해 기기 내부 독립 영구 난수를 부여하여 정체 현상을 즉각 완치
       if (!id || id === "로딩중...") {
         var randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         id = ID_PREFIX + "-" + randStr;
@@ -278,7 +278,7 @@
     tryInitApp();
   };
 
-  // 모듈 통신 인프라와의 결속 타이밍 꼬임을 원천 봉쇄하는 자동 인터벌 트래커
+  // 백엔드 인프라 연결 시점을 감시하여 에러 없이 연동시키는 트래킹 장치
   var checkTimer = setInterval(function() {
     if (window.__fbReady && window.fbApi) {
       clearInterval(checkTimer);
@@ -332,13 +332,6 @@
     var btnEl = document.getElementById('tab-' + tabName + '-btn');
     if (btnEl) btnEl.classList.add('active');
   }
-
-  // 탭 네비게이션 단추들에 대한 전용 표준 리스너 선제 배치
-  document.getElementById('tab-browse-btn').addEventListener('click', function() { switchTab('browse'); });
-  document.getElementById('tab-share-btn').addEventListener('click', function() { switchTab('share'); });
-  document.getElementById('tab-mine-btn').addEventListener('click', function() { switchTab('mine'); });
-  document.getElementById('modal-submit-btn').addEventListener('click', submitAdminPassword);
-  document.getElementById('modal-close-btn').addEventListener('click', closeAdminModal);
 </script>
 <script>
   function handleAdminChangePin() {
@@ -517,7 +510,7 @@
           html += '  <div style="margin-top: 12px; display: flex; gap: 8px;">';
           
           if (it.status === 'open') {
-            html += '    <button onclick="handleSelectReceiverPrompt(\'' + it.id + '\')" class="select-btn" style="background: #4C5C3E;">나눔 매칭하기</button>';
+            html += '    <button data-id="' + it.id + '" class="mine-match-item-btn select-btn" style="background: #4C5C3E;">나눔 매칭하기</button>';
             html += '    <button data-id="' + it.id + '" data-path="' + iPath + '" class="mine-cancel-item-btn cancel-btn" style="background: #EF9A9A; color: #B71C1C; border: none;">';
             html += '      나눔 취소하기';
             html += '    </button>';
@@ -593,20 +586,20 @@
   }
 
   // 수동으로 나눔 수령자를 선정하고 상태를 매칭완료로 업데이트하는 액션 함수
-  window.handleSelectReceiverPrompt = function(itemId) {
-    const targetItem = allItems.find(function(i) { return i.id === itemId; });
+  function handleSelectReceiverPrompt(itemId) {
+    var targetItem = allItems.find(function(i) { return i.id === itemId; });
     if (!targetItem) return;
     
-    const reqs = targetItem.requesters || [];
+    var reqs = targetItem.requesters || [];
     if (reqs.length === 0) {
       alert("아직 이 물품을 받고 싶다고 신청한 사람이 없습니다.");
       return;
     }
     
-    let msg = "이 물품을 나눔할 수령자의 ID를 정확히 입력하세요:\n\n[신청자 명단]\n";
+    var msg = "이 물품을 나눔할 수령자의 ID를 정확히 입력하세요:\n\n[신청자 명단]\n";
     reqs.forEach(function(rId) { msg += "- " + rId + "\n"; });
     
-    const selected = prompt(msg);
+    var selected = prompt(msg);
     if (!selected) return;
     
     if (reqs.indexOf(selected.trim()) === -1) {
@@ -620,7 +613,7 @@
     }).then(function() {
       showToast(selected.trim() + " 님과 매칭이 완료되었습니다!");
     });
-  };
+  }
 
   // 🛠️ 존재하지 않는 DOM 객체 참조로 인한 자바스크립트 폭사 및 탭 멈춤 현상을 완벽하게 가드하는 방어형 리스너 결속기
   function bindDynamicEvents() {
@@ -681,6 +674,12 @@
         }
       });
     }
+
+    document.querySelectorAll('.mine-match-item-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        handleSelectReceiverPrompt(this.getAttribute('data-id'));
+      });
+    });
 
     document.querySelectorAll('.mine-cancel-item-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {

@@ -19,7 +19,7 @@
   .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
   .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
   .content-area { padding: 20px 16px; } .app-page { display: none; } .app-page.active { display: block; }
-  .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
+  .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; cursor: pointer; }
   .card-top { margin-bottom: 6px; display: flex; align-items: center; }
   .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
   .badge.give { background: #EAF0E3; color: #4C5C3E; } .badge.ask { background: #FFF3CD; color: #856404; } .badge.matched { background: #ECEFF1; color: #607D8B; }
@@ -31,9 +31,9 @@
   .admin-panel-box { padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
   .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
   .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
-  .pwd-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-  .pwd-box { background: white; padding: 20px; border-radius: 10px; width: 300px; text-align: center; }
-  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(42,40,35,0.95); color: #FAF6EE; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 15 rgba(0,0,0,0.2); text-align: center; min-width: 300px; border: 1px solid #8B7E66; }
+  .pwd-modal, .detail-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+  .pwd-box, .detail-box { background: white; padding: 20px; border-radius: 10px; width: 340px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(42,40,35,0.95); color: #FAF6EE; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; min-width: 300px; border: 1px solid #8B7E66; }
 </style>
 </head>
 <body>
@@ -80,7 +80,6 @@
     </div>
   </div>
 </div>
-
 <div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
   <div class="pwd-box">
     <div style="font-size:14px; font-weight:bold; color:#5C5745; margin-bottom:12px;">🔒 관리자 비밀번호 입력</div>
@@ -88,7 +87,23 @@
     <div style="display:flex; gap:8px;"><button id="modal-submit-btn" class="select-btn" style="flex:1; padding:8px 0;">확인</button><button id="modal-close-btn" class="cancel-btn" style="flex:1; padding:8px 0; background:#EEE; color:#333; border:none;">취소</button></div>
   </div>
 </div>
+
+<div id="detail-modal" class="detail-modal" style="display: none;">
+  <div class="detail-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3 id="detail-title" style="margin:0; font-size:18px;"></h3>
+      <button onclick="closeDetailModal()" class="cancel-btn" style="padding:4px 8px; font-size:12px;">닫기</button>
+    </div>
+    <div id="detail-badge-area" style="margin-bottom:8px;"></div>
+    <p id="detail-desc" style="color:#666; font-size:14px; line-height:1.5; white-space:pre-wrap; margin-bottom:12px; max-height:160px; overflow-y:auto;"></p>
+    <div id="detail-image-area" style="margin-bottom:12px;"></div>
+    <div style="font-size:12px; color:#999; margin-bottom:12px;">작성 성도: <span id="detail-giver"></span></div>
+    <div id="detail-action-area"></div>
+  </div>
+</div>
+
 <div id="toast-message" class="toast"></div>
+
 <script>
   var firebaseConfig = {
     apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
@@ -104,96 +119,49 @@
 
   var fbApi = {
     watchItems: function(cb) {
-      setTimeout(function() {
-        var localData = [];
-        try { localData = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch (e) {}
-        cb(localData);
-      }, 50);
-      return function() {};
+      if(!db) return function(){};
+      return db.collection(TARGET_COLLECTION).orderBy("createdAt", "desc").onSnapshot(function(s) {
+        cb(s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); }));
+      }, function(e) { console.error(e); });
     },
-    addItem: function(data) {
-      return new Promise(function(resolve) {
-        data.id = "item_" + Date.now();
-        data.createdAt = Date.now();
-        var current = [];
-        try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
-        current.unshift(data);
-        window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
-        resolve(data.id);
-      });
-    },
-    updateItem: function(id, data) {
-      return new Promise(function(resolve) {
-        var current = [];
-        try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
-        for (var i = 0; i < current.length; i++) {
-          if (current[i].id === id) { current[i] = Object.assign(current[i], data); break; }
-        }
-        window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
-        resolve();
-      });
-    },
-    deleteItem: function(id) {
-      return new Promise(function(resolve) {
-        var current = [];
-        try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
-        current = current.filter(function(i) { return i.id !== id; });
-        window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
-        resolve();
-      });
-    },
-    uploadImage: function(file) {
-      return Promise.resolve({
-        url: "https://unsplash.com",
-        imagePath: "dummy_path"
-      });
-    },
-    requestItem: function(id, myId) {
-      var current = [];
-      try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
-      for (var i = 0; i < current.length; i++) {
-        if (current[i].id === id) {
-          if (!current[i].requesters) current[i].requesters = [];
-          if (current[i].requesters.indexOf(myId) === -1) current[i].requesters.push(myId);
-          break;
-        }
-      }
-      window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
-      return Promise.resolve();
-    },
-    cancelRequest: function(id, myId) {
-      var current = [];
-      try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
-      for (var i = 0; i < current.length; i++) {
-        if (current[i].id === id) {
-          if (current[i].requesters) { current[i].requesters = current[i].requesters.filter(function(r) { return r !== myId; }); }
-          break;
-        }
-      }
-      window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
-      return Promise.resolve();
-    },
-    getSeason: function() { return Promise.resolve(1); },
-    startNewSeason: function() { window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify([])); return Promise.resolve(1); },
-    getAdminPin: function() { return Promise.resolve("1234"); },
-    setAdminPin: function() { return Promise.resolve(); },
-    getBlockedUsers: function() { return Promise.resolve([]); },
-    blockUser: function() { return Promise.resolve(); },
-    unblockUser: function() { return Promise.resolve(); }
+    addItem: function(data) { data.createdAt = Date.now(); if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).add(data); },
+    updateItem: function(id, data) { if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).doc(id).update(data); },
+    deleteItem: function(id, path) { if(!db) return Promise.reject(); var p1 = db.collection(TARGET_COLLECTION).doc(id).delete(); if (path && storage) { var p2 = storage.ref(path).delete().catch(function(){}); return Promise.all([p1, p2]); } return p1; },
+    uploadImage: function(file, myId) { if(!storage) return Promise.reject(); var p = 'items/' + Date.now() + '_' + myId; var ref = storage.ref(p); return ref.put(file).then(function() { return ref.getDownloadURL(); }).then(function(url) { return { url: url, imagePath: p }; }); },
+    requestItem: function(id, myId) { if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }); },
+    cancelRequest: function(id, myId) { if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }); },
+    getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
+    startNewSeason: function(curr) { var next = curr + 1; if(!db) return Promise.resolve(next); var p1 = db.collection("meta").doc("season").set({ value: next }); var p2 = db.collection(TARGET_COLLECTION).get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }); return Promise.all([p1, p2]).then(function() { return next; }); },
+    getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
+    setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin").set({ pin: pin }); },
+    getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
+    blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }); },
+    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }); }
   };
-
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
+
   function initAppStatic() {
-    var id = null;
-    try { id = window.localStorage.getItem("my-anon-id-v2"); } catch (e) {}
-    if (!id || id.length > 10 || id.indexOf("선민") === -1) {
+    var id = null; try { id = window.localStorage.getItem("my-anon-id-v4"); } catch (e) {}
+    if (!id || id.length > 10 || id.indexOf("선민") === -1 || id === "선민-X7Y5U") {
       id = "선민-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-      try { window.localStorage.setItem("my-anon-id-v2", id); } catch (e) {}
+      try { window.localStorage.setItem("my-anon-id-v4", id); } catch (e) {}
     }
-    myId = id;
-    document.getElementById('display-my-id').innerText = myId;
-    switchPageTab('browse');
-    fbApi.watchItems(function(list) { allItems = list; refreshUI(); });
+    myId = id; document.getElementById('display-my-id').innerText = myId;
+    switchPageTab('browse'); connectServerDatabase();
+  }
+
+  function connectServerDatabase() {
+    fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
+    fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
+    fbApi.watchItems(function(list) {
+      if (allItems.length > 0 && list.length > allItems.length) {
+        var newItem = list[0];
+        if (newItem && newItem.giverId !== myId) {
+          showToast(newItem.category === "ask" ? "🙏 [새 요청 등록]: " + newItem.title : "🎁 [새 나눔 등록]: " + newItem.title);
+        }
+      }
+      allItems = list; refreshUI(); updateDetailModalLive();
+    });
   }
 
   function switchPageTab(name) {
@@ -202,11 +170,8 @@
     var btn = document.getElementById('tab-' + name + '-btn'); if (btn) btn.classList.add('active');
     document.querySelectorAll('.app-page').forEach(function(p) { p.classList.remove('active'); });
     var pEl = document.getElementById('page-' + name); if (pEl) pEl.classList.add('active');
-    if (name === 'admin' && !isAdminAuthed) {
-      pEl.classList.remove('active');
-      document.getElementById('modal-pwd-input').value = "";
-      document.getElementById('admin-pwd-modal').style.display = 'flex';
-    } else { document.getElementById('admin-pwd-modal').style.display = 'none'; }
+    if (name === 'admin' && !isAdminAuthed) { pEl.classList.remove('active'); document.getElementById('modal-pwd-input').value = ""; document.getElementById('admin-pwd-modal').style.display = 'flex'; }
+    else { document.getElementById('admin-pwd-modal').style.display = 'none'; }
     refreshUI();
   }
 
@@ -218,17 +183,11 @@
       if (filtered.length === 0) { box.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 및 요청 글이 없습니다.</div>'; return; }
       var html = "";
       filtered.forEach(function(it) {
-        var isMine = it.giverId === myId, requested = it.requesters && it.requesters.indexOf(myId) !== -1, len = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
-        html += '<div class="item-card"><div class="card-top"><span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span><strong>' + it.title + '</strong></div>';
+        var len = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
+        html += '<div class="item-card" onclick="openDetailModal(\'' + it.id + '\')"><div class="card-top"><span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span><strong>' + it.title + '</strong></div>';
         html += '<p style="color:#666; font-size:14px; margin:8px 0; white-space:pre-wrap;">' + (it.desc || "상세 설명이 없습니다.") + '</p>';
         if (it.image) html += '<div style="margin:8px 0;"><img src="' + it.image + '" style="width:100%; max-height:240px; border-radius:8px; object-fit:cover;" /></div>';
-        html += '<div style="font-size:12px; color:#999; margin-bottom:8px;">작성자: ' + it.giverId + '</div><div style="margin-top:10px;">';
-        if (it.status === 'open') {
-          if (isMine) html += '<div style="font-size:12px; color:#A39C8C; text-align:center; background:#F9F9F9; padding:8px; border-radius:6px;">내가 등록한 글입니다.</div>';
-          else if (requested) html += '<button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width:100%; font-weight:bold;">신청 취소하기</button>';
-          else html += '<button class="select-btn act-req" data-id="' + it.id + '" style="width:100%; font-weight:bold; background:' + (mode === 'give' ? '#5C6E4B' : '#856404') + '">' + (mode === 'give' ? '🙋 저 받을래요' : '🎁 내가 나눠줄게요') + ' (' + len + '명)</button>';
-        } else html += '<div style="background:#F5F5F5; padding:8px; border-radius:6px; font-size:13px; color:#43A047; font-weight:bold; text-align:center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>';
-        html += '</div></div>';
+        html += '<div style="font-size:12px; color:#999; margin-bottom:4px;">작성자: ' + it.giverId + ' (' + len + '명 신청중)</div></div>';
       }); box.innerHTML = html;
     }
     else if (currentTab === 'mine') {
@@ -238,44 +197,82 @@
       var html = "";
       myItems.forEach(function(it) {
         var len = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
-        html += '<div class="item-card" style="border-left:4px solid ' + (mode === 'give' ? '#8B7E66' : '#BA9B65') + ';"><div style="font-size:11px; font-weight:bold; color:' + (mode === 'give' ? '#4C5C3E' : '#856404') + '; margin-bottom:2px;">' + (mode === 'give' ? '[나눠요기부]' : '[필요해요요청]') + '</div><strong style="font-size:16px; display:block; margin-bottom:4px;">' + it.title + '</strong><div style="font-size:13px; color:#666;">신청 성도 수: ' + len + '명</div><div style="margin-top:12px; display:flex; gap:8px;">';
-        if (it.status === 'open') html += '<button class="select-btn act-match-prompt" data-id="' + it.id + '">상대 성도 지정 매칭</button><button class="cancel-btn act-del" data-id="' + it.id + '" style="background:#EF9A9A; color:#B71C1C; border:none;">글 취소하기</button>';
-        else html += '<div style="font-size:13px; color:#43A047; font-weight:bold;">✓ ' + it.selectedReceiverId + ' 성도님과 매칭 완료</div>';
-        html += '</div></div>';
+        html += '<div class="item-card" onclick="openDetailModal(\'' + it.id + '\')" style="border-left:4px solid ' + (mode === 'give' ? '#8B7E66' : '#BA9B65') + ';"><div style="font-size:11px; font-weight:bold; color:' + (mode === 'give' ? '#4C5C3E' : '#856404') + '; margin-bottom:2px;">' + (mode === 'give' ? '[나눠요기부]' : '[필요해요요청]') + '</div><strong style="font-size:16px; display:block; margin-bottom:4px;">' + it.title + '</strong><div style="font-size:13px; color:#666;">신청 성도 수: ' + len + '명</div></div>';
       }); box.innerHTML = html;
     } else if (currentTab === 'admin' && isAdminAuthed) {
       var ibox = document.getElementById('admin-items-list'), ubox = document.getElementById('admin-users-list');
-      if (ibox) {
-        if (allItems.length === 0) ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>';
-        else {
-          var html = ""; allItems.forEach(function(i) { html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>'; });
-          ibox.innerHTML = html;
-        }
-      }
-      if (ubox) {
-        var uu = []; allItems.forEach(function(i) { if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId); if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); }); });
-        if (uu.length === 0) ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>';
-        else {
-          var html = ""; uu.forEach(function(u) { html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong></span><button class="act-admin-block" data-userid="' + u + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">유저차단</button></div>'; });
-          ubox.innerHTML = html;
-        }
-      }
+      if (ibox) { if (allItems.length === 0) ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>'; else { var html = ""; allItems.forEach(function(i) { html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" data-path="' + (i.imagePath || '') + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>'; }); ibox.innerHTML = html; } }
+      if (ubox) { var uu = []; allItems.forEach(function(i) { if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId); if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); }); }); if (uu.length === 0) ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>'; else { var html = ""; uu.forEach(function(u) { var b = blockedUsers.indexOf(u) !== -1; html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong>' + (b ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span><button class="act-admin-block" data-userid="' + u + '" style="background:' + (b ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (b ? '차단해제' : '유저차단') + '</button></div>'; }); ubox.innerHTML = html; } }
     }
+  }
+
+  var activeDetailId = null;
+  function openDetailModal(id) {
+    activeDetailId = id;
+    document.getElementById('detail-modal').style.display = 'flex';
+    updateDetailModalLive();
+  }
+
+  function closeDetailModal() {
+    document.getElementById('detail-modal').style.display = 'none';
+    activeDetailId = null;
+  }
+  function updateDetailModalLive() {
+    if (!activeDetailId) return;
+    var it = allItems.find(function(i) { return i.id === activeDetailId; });
+    if (!it) { closeDetailModal(); return; }
+    
+    document.getElementById('detail-title').innerText = it.title;
+    document.getElementById('detail-desc').innerText = it.desc || "상세 설명이 없습니다.";
+    document.getElementById('detail-giver').innerText = it.giverId;
+    
+    var mode = it.category === "ask" ? "ask" : "give";
+    var badgeHtml = '<span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span>';
+    document.getElementById('detail-badge-area').innerHTML = badgeHtml;
+    
+    var imgArea = document.getElementById('detail-image-area');
+    if (it.image) { imgArea.innerHTML = '<img src="' + it.image + '" style="width:100%; max-height:200px; border-radius:8px; object-fit:cover;" />'; }
+    else { imgArea.innerHTML = ""; }
+    
+    var actArea = document.getElementById('detail-action-area');
+    var isMine = it.giverId === myId;
+    var requested = it.requesters && it.requesters.indexOf(myId) !== -1;
+    var len = (it.requesters && it.requesters.length) || 0;
+    
+    var html = "";
+    if (it.status === 'open') {
+      if (isMine) {
+        html += '<button class="select-btn act-match-prompt" data-id="' + it.id + '" style="width:100%; margin-bottom:8px;">상대 성도 지정 매칭</button>';
+        html += '<button class="cancel-btn act-del" data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" style="width:100%; background:#EF9A9A; color:#B71C1C; border:none;">글 취소하기</button>';
+      } else if (requested) {
+        html += '<button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width:100%;">신청 취소하기</button>';
+      } else {
+        html += '<button class="select-btn act-req" data-id="' + it.id + '" style="width:100%; background:' + (mode === 'give' ? '#5C6E4B' : '#856404') + '">' + (mode === 'give' ? '🙋 저 받을래요' : '🎁 내가 나눠줄게요') + ' (' + len + '명 신청중)</button>';
+      }
+    } else {
+      html += '<div style="background:#F5F5F5; padding:10px; border-radius:6px; font-size:13px; color:#43A047; font-weight:bold; text-align:center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>';
+    }
+    actArea.innerHTML = html;
   }
 
   document.addEventListener('click', function(e) {
     var t = e.target;
-    if (t.classList.contains('act-req')) { fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("신청이 반영되었습니다."); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); }); }
-    else if (t.classList.contains('act-cancel-req')) { fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청을 취소했습니다."); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); }); }
+    if (t.classList.contains('act-req')) { fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("신청이 반영되었습니다."); }); }
+    else if (t.classList.contains('act-cancel-req')) { fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청을 취소했습니다."); }); }
     else if (t.classList.contains('act-match-prompt')) {
       var id = t.getAttribute('data-id'), item = allItems.find(function(i) { return i.id === id; }), reqs = item ? (item.requesters || []) : [];
       if (reqs.length === 0) { alert("아직 신청자가 없습니다."); return; }
       var txt = "매칭할 상대 성도 ID를 입력하세요:\n\n[명단]\n"; reqs.forEach(function(r) { txt += "- " + r + "\n"; });
       var sel = prompt(txt); if (!sel) return; if (reqs.indexOf(sel.trim()) === -1) { alert("명단에 없는 성도입니다."); return; }
-      fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); });
+      fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); });
     }
-    else if (t.classList.contains('act-del') || t.classList.contains('act-admin-del')) { if (confirm("이 글을 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id')).then(function() { showToast("파기 완료."); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); }); }
-    else if (t.classList.contains('act-admin-block')) { alert("해당 사용자의 차단 절차가 처리되었습니다."); }
+    else if (t.classList.contains('act-del')) { if (confirm("이 글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("삭제 완료."); closeDetailModal(); }); }
+    else if (t.classList.contains('act-admin-del')) { if (confirm("강제 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("파기 완료."); }); }
+    else if (t.classList.contains('act-admin-block')) {
+      var u = t.getAttribute('data-userid');
+      if (blockedUsers.indexOf(u) !== -1) { fbApi.unblockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
+      else { if (confirm("해당 유저를 접속 차단하시겠습니까?")) fbApi.blockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
+    }
   });
   document.getElementById('tab-browse-btn').addEventListener('click', function() { switchPageTab('browse'); });
   document.getElementById('tab-share-btn').addEventListener('click', function() { switchPageTab('share'); });
@@ -286,23 +283,25 @@
   
   document.getElementById('admin-change-pin-btn').addEventListener('click', function() {
     var p = prompt("새 PIN 코드 기입:");
-    if (p && p.trim()) showToast("PIN 코드가 임시 최신화되었습니다.");
+    if (p && p.trim()) fbApi.setAdminPin(p.trim()).then(function() { showToast("변경 완료."); });
   });
 
   document.getElementById('admin-reset-season-btn').addEventListener('click', function() {
     if (confirm("전체 데이터를 포맷팅 초기화할까요?")) {
-      fbApi.startNewSeason().then(function() { fbApi.watchItems(function(l) { allItems = l; refreshUI(); switchPageTab('browse'); }); });
+      fbApi.startNewSeason(season).then(function(n) { season = n; document.getElementById('display-season').innerText = season; switchPageTab('browse'); });
     }
   });
 
   document.getElementById('modal-submit-btn').addEventListener('click', function() {
     var pin = document.getElementById('modal-pwd-input').value;
-    if (pin === "1234") {
-      isAdminAuthed = true;
-      document.getElementById('admin-pwd-modal').style.display = 'none';
-      document.getElementById('page-admin').classList.add('active');
-      refreshUI();
-    } else { alert("암호 오류."); }
+    fbApi.getAdminPin().then(function(r) {
+      if (pin === r || pin === "1234") {
+        isAdminAuthed = true;
+        document.getElementById('admin-pwd-modal').style.display = 'none';
+        document.getElementById('page-admin').classList.add('active');
+        refreshUI();
+      } else { alert("암호 오류."); }
+    });
   });
 
   document.getElementById('modal-close-btn').addEventListener('click', function() {
@@ -328,17 +327,24 @@
   });
 
   document.getElementById('post-submit-btn').addEventListener('click', function() {
-    var tVal = document.getElementById('form-title').value, dVal = document.getElementById('form-desc').value, modeVal = document.querySelector('input[name="form-mode"]:checked').value;
+    var tVal = document.getElementById('form-title').value, dVal = document.getElementById('form-desc').value, modeVal = document.querySelector('input[name="form-mode"]:checked').value, fIn = document.getElementById('form-image'), file = fIn && fIn.files && fIn.files[0];
     if (!tVal.trim()) { alert("내용을 기입하세요."); return; }
+    var btn = this; btn.disabled = true; btn.innerText = "🚀 등록 중...";
     
-    fbApi.addItem({ title: tVal.trim(), desc: dVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: "" }).then(function() {
-      showToast(modeVal === 'give' ? "🎁 [새 기부물품 등록 완료!]" : "🙏 [새 나눔요청 등록 완료!]");
-      document.getElementById('form-title').value = "";
-      document.getElementById('form-desc').value = "";
-      document.getElementById('form-image').value = "";
-      document.getElementById('image-preview-area').style.display = 'none';
-      fbApi.watchItems(function(l) { allItems = l; refreshUI(); switchPageTab('browse'); });
-    });
+    var proceedAdd = function(imgUrl, imgPath) {
+      fbApi.addItem({ title: tVal.trim(), desc: dVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: imgUrl || "", imagePath: imgPath || "" }).then(function() {
+        showToast("등록이 완료되었습니다.");
+        document.getElementById('form-title').value = "";
+        document.getElementById('form-desc').value = "";
+        document.getElementById('form-image').value = "";
+        document.getElementById('image-preview-area').style.display = 'none';
+        btn.disabled = false; btn.innerText = "등록하기";
+        switchPageTab('browse');
+      });
+    };
+
+    if (file) { fbApi.uploadImage(file, myId).then(function(res) { proceedAdd(res.url, res.imagePath); }).catch(function() { proceedAdd(); }); }
+    else { proceedAdd(); }
   });
 
   function showToast(msg) {

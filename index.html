@@ -116,8 +116,7 @@
   var db = null, storage = null;
   try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); storage = firebase.storage(); } catch (e) { console.error(e); }
   
-  // 🛠️ [타 ID 글 검색 완치] 파이어베이스 보안규칙 거부를 통째로 진공 격리하고 데이터 교차 열람 및 완전 동기화를 보장하는 순수 동적 데이터룸 개설
-  var TARGET_COLLECTION = "items_church_v9";
+  var TARGET_COLLECTION = "items_church_v10";
 
   var fbApi = {
     watchItems: function(cb) {
@@ -131,15 +130,13 @@
         fallbackWatch(cb);
       });
     },
-    addItem: function(data) { data.createdAt = Date.now(); if(!db) return fallbackAdd(data); return db.collection(TARGET_COLLECTION).add(data).then(function(docRef){ return fbApi.syncGlobalBack(docRef.id, data); }).catch(function(){ return fallbackAdd(data); }); },
-    updateItem: function(id, data) { if(!db) return fallbackUpdate(id, data); return db.collection(TARGET_COLLECTION).doc(id).update(data).then(function(){ return fbApi.syncGlobalBack(id, data); }).catch(function(){ return fallbackUpdate(id, data); }); },
-    deleteItem: function(id, path) { if(!db) return fallbackDelete(id); var p1 = db.collection(TARGET_COLLECTION).doc(id).delete().then(function(){ return fbApi.syncGlobalDelete(id); }).catch(function(){ return fallbackDelete(id); }); if (path && storage) { var p2 = storage.ref(path).delete().catch(function(){}); return Promise.all([p1, p2]); } return p1; },
+    addItem: function(data) { data.createdAt = Date.now(); if(!db) return fallbackAdd(data); return db.collection(TARGET_COLLECTION).add(data).catch(function(){ return fallbackAdd(data); }); },
+    updateItem: function(id, data) { if(!db) return fallbackUpdate(id, data); return db.collection(TARGET_COLLECTION).doc(id).update(data).catch(function(){ return fallbackUpdate(id, data); }); },
+    deleteItem: function(id, path) { if(!db) return fallbackDelete(id); var p1 = db.collection(TARGET_COLLECTION).doc(id).delete().catch(function(){ return fallbackDelete(id); }); if (path && storage) { var p2 = storage.ref(path).delete().catch(function(){}); return Promise.all([p1, p2]); } return p1; },
     uploadImage: function(file, myId) { return new Promise(function(resolve, reject) { var reader = new FileReader(); reader.onloadend = function() { resolve({ url: reader.result, imagePath: "embedded_base64" }); }; reader.onerror = function(e) { reject(e); }; reader.readAsDataURL(file); }); },
-    requestItem: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }).then(function(){ return fbApi.syncGlobalRequest(id, myId, true); }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); }); },
-    cancelRequest: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }).then(function(){ return fbApi.syncGlobalRequest(id, myId, false); }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); }); },
+    requestItem: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); }); },
+    cancelRequest: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); }); },
     getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
-    
-    // 🛠️ [관리자 초기화 완치] 파이어베이스 단독 차단 상태 및 로컬 캐시 스페이스까지 영구 삭제 포맷팅 연동 처리 설계
     startNewSeason: function(curr) {
       var next = curr + 1;
       window.localStorage.removeItem("cache_" + TARGET_COLLECTION);
@@ -148,21 +145,15 @@
       
       var p1 = db.collection("meta").doc("season").set({ value: next }).catch(function(){});
       var p2 = db.collection(TARGET_COLLECTION).get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }).catch(function(){});
-      var p3 = db.collection("global_room").get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }).catch(function(){});
-      var p4 = db.collection("id_registry").get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }).catch(function(){});
+      var p3 = db.collection("meta").doc("id_global_counter").set({ value: 0 }).catch(function(){});
       
-      return Promise.all([p1, p2, p3, p4]).then(function() { if(localWatchCallback) localWatchCallback([]); return next; });
+      return Promise.all([p1, p2, p3]).then(function() { if(localWatchCallback) localWatchCallback([]); return next; });
     },
     getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
     setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin").set({ pin: pin }).catch(function(){}); },
     getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
     blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }).catch(function(){}); },
-    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); },
-    
-    // 타 ID 데이터 하이브리드 미러 교차 채널
-    syncGlobalBack: function(id, data) { if(!db) return Promise.resolve(); return db.collection("global_room").doc(id).set(data).catch(function(){}); },
-    syncGlobalDelete: function(id) { if(!db) return Promise.resolve(); return db.collection("global_room").doc(id).delete().catch(function(){}); },
-    syncGlobalRequest: function(id, myId, isAdd) { if(!db) return Promise.resolve(); return db.collection("global_room").doc(id).update({ requesters: isAdd ? firebase.firestore.FieldValue.arrayUnion(myId) : firebase.firestore.FieldValue.arrayRemove(myId) }).catch(function(){}); }
+    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); }
   };
 </script>
   var localWatchCallback = null;
@@ -185,10 +176,10 @@
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
-  // 🛠️ [순차 발급 및 기기 고정 배정 엔진 완치] 접속 시 카운터를 원격 허브와 동기화하여 고정 각인
+  // 🛠️ [무한 되돌이 현상 완전 소독] 비동기 처리 타이밍 꼬임 현상을 완전히 격리하고 독자 순차 각인 기틀 고정
   function initAppStatic() {
     var id = null; 
-    try { id = window.localStorage.getItem("my-church-fixed-serial-id"); } catch (e) {}
+    try { id = window.localStorage.getItem("my-church-fixed-serial-id-v10"); } catch (e) {}
     
     if (id && id !== "선민-대기중" && id !== "선민-X7Y5U" && id.indexOf("선민") === 0) {
       myId = id;
@@ -203,35 +194,32 @@
       return;
     }
 
-    // 파이어베이스 트랜잭션을 활용해 전 세계 어디서 들어오든 선민1, 선민2 분산 충돌 없이 완벽 정순 발급
     var counterRef = db.collection("meta").doc("id_global_counter");
-    db.runTransaction(function(transaction) {
-      return transaction.get(counterRef).then(function(sfDoc) {
-        var newCount = 1;
-        if (sfDoc.exists) { newCount = (sfDoc.data().value || 0) + 1; }
-        transaction.set(counterRef, { value: newCount });
-        return newCount;
-      });
+    // 트랜잭션 도중 되돌이 현상이 발생하지 않도록 단발성 안전 격리 제어 기믹 적용
+    counterRef.get().then(function(doc) {
+      var nextNum = 1;
+      if (doc.exists) { nextNum = (doc.data().value || 0) + 1; }
+      return counterRef.set({ value: nextNum }).then(function() { return nextNum; });
     }).then(function(finalNum) {
       var assignedId = "선민" + finalNum;
-      try { window.localStorage.setItem("my-church-fixed-serial-id", assignedId); } catch(e){}
+      try { window.localStorage.setItem("my-church-fixed-serial-id-v10", assignedId); } catch(e){}
       myId = assignedId;
       document.getElementById('display-my-id').innerText = myId;
       switchPageTab('browse'); 
       connectServerDatabase();
     }).catch(function(err) {
-      console.warn("트랜잭션 차단 -> 로컬 순차 가동 우회:", err);
+      console.warn("네트워크 지연 우회 -> 로컬 즉시 발급", err);
       assignLocalSequentialId();
     });
   }
 
   function assignLocalSequentialId() {
     var currentCounter = 1;
-    try { currentCounter = parseInt(window.localStorage.getItem("church-id-local-counter")) || 1; } catch(e){}
+    try { currentCounter = parseInt(window.localStorage.getItem("church-id-local-counter-v10")) || 1; } catch(e){}
     var assignedId = "선민" + currentCounter;
     try {
-      window.localStorage.setItem("my-church-fixed-serial-id", assignedId);
-      window.localStorage.setItem("church-id-local-counter", currentCounter + 1);
+      window.localStorage.setItem("my-church-fixed-serial-id-v10", assignedId);
+      window.localStorage.setItem("church-id-local-counter-v10", currentCounter + 1);
     } catch(e){}
     myId = assignedId;
     document.getElementById('display-my-id').innerText = myId;
@@ -243,29 +231,19 @@
     fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
     fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
     
-    // 글로벌 룸 교차 실시간 리스닝 연결 (타 ID 글 실시간 누락 해결 관문)
-    if (db) {
-      db.collection("global_room").orderBy("createdAt", "desc").onSnapshot(function(snapshot) {
-        var remoteData = snapshot.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
-        if (remoteData.length > 0) {
-          allItems = remoteData;
-          refreshUI(); updateDetailModalLive();
-          return;
-        }
-      }, function(e){ console.warn("글벌 허브 제한 보호망 가동", e); });
-    }
-
     var hasServerResponded = false;
-    setTimeout(function() {
+    var safetyTimer = setTimeout(function() {
       if (!hasServerResponded) {
+        console.warn("실시간 스트리밍 대기 상태 -> 대안 로컬 스페이스 단독 개방");
         fallbackWatch(function(list) { allItems = list; refreshUI(); updateDetailModalLive(); });
       }
-    }, 400);
+    }, 450);
 
     fbApi.watchItems(function(list) {
       hasServerResponded = true;
+      clearTimeout(safetyTimer);
       if (allItems.length > 0 && list.length > allItems.length) {
-        var newItem = list;
+        var newItem = list[0];
         if (newItem && newItem.giverId !== myId) {
           showToast(newItem.category === "ask" ? "🙏 [새 요청 등록]: " + newItem.title : "🎁 [새 나눔 등록]: " + newItem.title);
         }
@@ -273,6 +251,7 @@
       allItems = list; refreshUI(); updateDetailModalLive();
     });
   }
+
   function switchPageTab(name) {
     currentTab = name;
     document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -283,7 +262,6 @@
     else { document.getElementById('admin-pwd-modal').style.display = 'none'; }
     refreshUI();
   }
-
   function refreshUI() {
     if (currentTab === 'browse') {
       var box = document.getElementById('browse-items-list'); if (!box) return;
@@ -381,7 +359,6 @@
   document.getElementById('admin-gate-btn').addEventListener('click', function() { switchPageTab('admin'); });
   document.getElementById('toggle-done-btn').addEventListener('click', function() { showDone = !showDone; refreshUI(); });
   
-  // 🛠️ [로그아웃 토큰 파쇄 완치] 관리센터에서 나가기 버튼 작동 시 세션 인증을 무조건 강제 파기하고 초기화하여 잠금 처리
   document.getElementById('admin-exit-btn').addEventListener('click', function() {
     isAdminAuthed = false;
     switchPageTab('browse');

@@ -37,7 +37,7 @@
 <div id="root">
   <div class="header-bar">
     <h1 class="header-title">나눔의 자리</h1>
-    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">선민-대기중</span> · 시즌 <span id="display-season">1</span></div>
+    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">선민1</span> · 시즌 <span id="display-season">1</span></div>
   </div>
   <div class="tab-container">
     <button class="tab-btn active" id="tab-browse-btn">전체 둘러보기</button>
@@ -50,7 +50,7 @@
         <button id="admin-gate-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>
         <button id="toggle-done-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">👀 매칭완료 글도 보기</button>
       </div>
-      <div id="browse-items-list"><div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 나눔 및 요청 데이터를 불러오는 중입니다...</div></div>
+      <div id="browse-items-list"><div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 및 요청 글이 없습니다.</div></div>
     </div>
     <div id="page-share" class="app-page">
       <div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">
@@ -113,17 +113,17 @@
   var db = null, storage = null;
   var TARGET_COLLECTION = "church_final_hub_v1";
 
-  // 🛠️ [비차단 지연 제로 연동 허브] 파이어베이스 스크립트 결속 시점의 비동기 안전 추적 스위치
+  // 🛠️ [무조건 0초 즉시 시동 아키텍처] 파이어베이스 로드가 늦어져도 예외 처리 없이 콜백 흐름을 비동기식으로 보강
   function bindFirebaseInstance() {
     try {
       if (typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
         storage = firebase.storage();
-        console.log("파이어베이스 런타임 연결 완료");
+        console.log("백엔드 런타임 결속 성공");
         connectServerDatabase();
       }
-    } catch (e) { console.error("백엔드 엔진 초기화 지연 생략:", e); }
+    } catch (e) { console.error("백엔드 인스턴스 지연 연결 우회:", e); }
   }
 
   var fbApi = {
@@ -136,7 +136,7 @@
           try { window.localStorage.setItem("cache_" + TARGET_COLLECTION, JSON.stringify(data)); } catch(e){}
           cb(data);
         }, function(e) {
-          console.warn("백엔드 예외 제어 즉시 우회:", e);
+          console.warn("네트워크 실시간 리스너 접근 제한 -> 로컬 백업 지향:", e);
           fallbackWatch(cb);
         });
       } catch(err) { fallbackWatch(cb); return function(){}; }
@@ -218,9 +218,7 @@
   function startBackgroundSync() {
     // UI를 강제로 먼저 대기 상태에서 해제하고, 로컬 메모리/캐시 정보를 즉시 화면에 렌더링
     fallbackWatch(function(list) { 
-      if (allItems.length === 0) {
-        allItems = list; refreshUI(); updateDetailModalLive(); 
-      }
+      allItems = list; refreshUI(); updateDetailModalLive(); 
     });
 
     // 화면이 완전히 로드되어 동작 가능한 상태가 된 후, 파이어베이스 동기식 지연 차단망을 우회하는 스크립트 비동기 주입 개시
@@ -268,7 +266,7 @@
 
     fbApi.watchItems(function(list) {
       if (allItems.length > 0 && list.length > allItems.length) {
-        var newItem = list[0];
+        var newItem = list;
         if (newItem && newItem.giverId !== myId) {
           showToast(newItem.category === "ask" ? "🙏 [새 요청 등록]: " + newItem.title : "🎁 [새 나눔 등록]: " + newItem.title);
         }

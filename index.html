@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (탭 메뉴 멈춤 현상 완벽 해결 최종본)
+  나눔의 자리 - 교회 나눔 웹앱 (비동기 스크립트 타이밍 충돌 완전 해결 최종본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -64,9 +64,9 @@
   </div>
 
   <div class="tab-container">
-    <button class="tab-btn active" id="tab-browse-btn" onclick="switchTab('browse')">둘러보기</button>
-    <button class="tab-btn" id="tab-share-btn" onclick="switchTab('share')">나눔하기</button>
-    <button class="tab-btn" id="tab-mine-btn" onclick="switchTab('mine')">나의 나눔</button>
+    <button class="tab-btn active" id="tab-browse-btn">둘러보기</button>
+    <button class="tab-btn" id="tab-share-btn">나눔하기</button>
+    <button class="tab-btn" id="tab-mine-btn">나의 나눔</button>
   </div>
 
   <div class="content-area" id="content-container"></div>
@@ -77,14 +77,14 @@
     <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
     <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align: center; margin-bottom: 14px;" />
     <div style="display: flex; gap: 8px;">
-      <button onclick="submitAdminPassword()" class="select-btn" style="flex: 1; padding: 8px 0;">확인</button>
-      <button onclick="closeAdminModal()" class="cancel-btn" style="flex: 1; padding: 8px 0; background: #EEE; color: #333; border: none;">취소</button>
+      <button id="modal-submit-btn" class="select-btn" style="flex: 1; padding: 8px 0;">확인</button>
+      <button id="modal-close-btn" class="cancel-btn" style="flex: 1; padding: 8px 0; background: #EEE; color: #333; border: none;">취소</button>
     </div>
   </div>
 </div>
 
 <div id="toast-message" class="toast"></div>
-<!-- 파이어베이스 모듈 스크립트 결속 연동 및 API 바인딩 -->
+<!-- 통합형 단일 모듈 시스템 스크립트 시작 -->
 <script type="module">
   import { initializeApp } from "https://gstatic.com";
   import {
@@ -110,7 +110,7 @@
   const db = getFirestore(app);
   const storage = getStorage(app);
 
-  window.fb = {
+  const fbApi = {
     watchItems: function(cb) {
       const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
       return onSnapshot(q, function(snap) {
@@ -214,43 +214,28 @@
       return updateDoc(ref, { list: arrayRemove(userId) });
     }
   };
-  window.__fbReady = true;
-  if (window.__fbCallback) window.__fbCallback();
-</script>
-<!-- 가동 제어 프론트엔드 네이티브 표준 스크립트 엔진 -->
-<script>
-  var fbApi = null;
-  var myId = null;
-  var season = 1;
-  var currentTab = 'browse';
-  var allItems = [];
-  var showDone = false;
-  var isAdminAuthed = false;
-  var blockedUsers = [];
-  var ID_PREFIX = "선민";
+  let myId = null;
+  let season = 1;
+  let currentTab = 'browse';
+  let allItems = [];
+  let showDone = false;
+  let isAdminAuthed = false;
+  let blockedUsers = [];
+  const ID_PREFIX = "선민";
 
-  var showPwdModal = false;
-  var pwdInput = "";
-  var formTitle = "";
-  var formDesc = "";
-  var posting = false;
-  var imgFile = null;
-  var imgPreview = "";
+  let showPwdModal = false;
+  let pwdInput = "";
 
   function showToast(msg) {
-    var el = document.getElementById('toast-message');
+    const el = document.getElementById('toast-message');
     if (!el) return;
     el.innerText = msg;
     el.style.display = 'block';
     setTimeout(function() { el.style.display = 'none'; }, 2200);
   }
 
-  // 🛠️ 서버 지연과 무관하게 최초 화면 기틀을 즉시 활성화하여 메뉴 얼어붙음 차단
+  // 🛠️ 모듈 스크립트 내부로 완전히 통합되어 실행 순서 꼬임과 ID 멈춤을 완벽하게 방지하는 식별 엔진
   function initApp() {
-    fbApi = window.fb;
-    if (!fbApi) return;
-    
-    // 첫 탭 화면 0.1초 만에 선제 빌드 강제 호출
     renderCurrentTab();
 
     fbApi.getBlockedUsers().then(function(list) {
@@ -260,12 +245,12 @@
 
     fbApi.getSeason().then(function(currentSeason) {
       season = currentSeason;
-      var seasonEl = document.getElementById('display-season');
+      const seasonEl = document.getElementById('display-season');
       if (seasonEl) seasonEl.innerText = season;
       
-      var id = null;
+      let id = null;
       try {
-        var raw = window.localStorage.getItem("my-anon-id");
+        const raw = window.localStorage.getItem("my-anon-id");
         if (raw) {
           if (raw.indexOf("{") !== -1) {
             id = JSON.parse(raw).id;
@@ -290,7 +275,7 @@
   }
 
   function finishInit() {
-    var idEl = document.getElementById('display-my-id');
+    const idEl = document.getElementById('display-my-id');
     if (idEl) idEl.innerText = myId;
     
     fbApi.watchItems(function(list) {
@@ -299,24 +284,16 @@
     });
   }
 
-  window.__fbCallback = function() {
-    if (window.fb) initApp();
-  };
-
-  var checkTimer = setInterval(function() {
-    if (window.fb) {
-      clearInterval(checkTimer);
-      initApp();
-    }
-  }, 50);
+  // 모듈 통합으로 인해 즉시 가동 보장
+  initApp();
 
   function switchTab(tabName) {
     if (tabName === 'admin' && !isAdminAuthed) {
       pwdInput = "";
-      var inputArea = document.getElementById('modal-pwd-input');
+      const inputArea = document.getElementById('modal-pwd-input');
       if (inputArea) inputArea.value = "";
       showPwdModal = true;
-      var modalEl = document.getElementById('admin-pwd-modal');
+      const modalEl = document.getElementById('admin-pwd-modal');
       if (modalEl) modalEl.style.display = 'flex';
       return;
     }
@@ -326,8 +303,8 @@
   }
 
   function submitAdminPassword() {
-    var inputArea = document.getElementById('modal-pwd-input');
-    var inputPin = inputArea ? inputArea.value : "";
+    const inputArea = document.getElementById('modal-pwd-input');
+    const inputPin = inputArea ? inputArea.value : "";
     if (!inputPin) return;
     
     fbApi.getAdminPin().then(function(realPin) {
@@ -335,7 +312,7 @@
         isAdminAuthed = true;
         currentTab = 'admin';
         showPwdModal = false;
-        var modalEl = document.getElementById('admin-pwd-modal');
+        const modalEl = document.getElementById('admin-pwd-modal');
         if (modalEl) modalEl.style.display = 'none';
         updateTabActiveState('admin');
         renderCurrentTab();
@@ -347,19 +324,24 @@
 
   function closeAdminModal() {
     showPwdModal = false;
-    var modalEl = document.getElementById('admin-pwd-modal');
+    const modalEl = document.getElementById('admin-pwd-modal');
     if (modalEl) modalEl.style.display = 'none';
   }
 
   function updateTabActiveState(tabName) {
     document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
-    var btnEl = document.getElementById('tab-' + tabName + '-btn');
+    const btnEl = document.getElementById('tab-' + tabName + '-btn');
     if (btnEl) btnEl.classList.add('active');
   }
-</script>
-<script>
+
+  // 상단 HTML 태그에 수동 바인딩된 온클릭 연동 장치를 모듈 범위 안전 통신망으로 재우회 결속
+  document.getElementById('tab-browse-btn').addEventListener('click', function() { switchTab('browse'); });
+  document.getElementById('tab-share-btn').addEventListener('click', function() { switchTab('share'); });
+  document.getElementById('tab-mine-btn').addEventListener('click', function() { switchTab('mine'); });
+  document.getElementById('modal-submit-btn').addEventListener('click', submitAdminPassword);
+  document.getElementById('modal-close-btn').addEventListener('click', closeAdminModal);
   function handleAdminChangePin() {
-    var newPin = prompt("변경할 새로운 관리자 비밀번호를 입력하세요:");
+    const newPin = prompt("변경할 새로운 관리자 비밀번호를 입력하세요:");
     if (!newPin || !newPin.trim()) return;
     fbApi.setAdminPin(newPin.trim()).then(function() {
       showToast("관리자 비밀번호가 변경되었습니다.");
@@ -401,11 +383,24 @@
     }
   }
 
+  function handleRequest(id) {
+    fbApi.requestItem(id, myId).then(function() { showToast("신청이 완료되었어요."); });
+  }
+
+  function handleCancelRequest(id) {
+    fbApi.cancelRequest(id, myId).then(function() { showToast("신청을 취소했어요."); });
+  }
+
+  function toggleShowDone() {
+    showDone = !showDone;
+    renderCurrentTab();
+  }
+
   function renderCurrentTab() {
-    var container = document.getElementById('content-container');
+    const container = document.getElementById('content-container');
     if (!container) return;
     
-    var html = "";
+    let html = "";
 
     // 1. 둘러보기 탭 화면 전개 구역
     if (currentTab === 'browse') {
@@ -414,13 +409,13 @@
         return;
       }
 
-      var filtered = showDone ? allItems : allItems.filter(function(it) {
+      const filtered = showDone ? allItems : allItems.filter(function(it) {
         return it.status !== 'matched' && it.status !== 'done';
       });
       
       html += '<div style="display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px;">';
-      html += '  <button onclick="switchTab(\'admin\')" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>';
-      html += '  <button onclick="toggleShowDone()" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">';
+      html += '  <button id="admin-gate-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>';
+      html += '  <button id="toggle-done-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">';
       html += showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기";
       html += '  </button>';
       html += '</div>';
@@ -429,8 +424,8 @@
         html += '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 물품이 없습니다.</div>';
       } else {
         filtered.forEach(function(it) {
-          var isMine = it.giverId === myId;
-          var requested = it.requesters && it.requesters.indexOf(myId) !== -1;
+          const isMine = it.giverId === myId;
+          const requested = it.requesters && it.requesters.indexOf(myId) !== -1;
           
           html += '<div class="item-card">';
           html += '  <div class="card-top">';
@@ -453,10 +448,10 @@
               html += '    <div style="font-size: 12px; color: #A39C8C;">내가 올린 나눔이에요</div>';
             } else {
               if (requested) {
-                html += '    <button onclick="handleCancelRequest(\'' + it.id + '\')" class="cancel-btn" style="width: 100%;">신청 취소하기</button>';
+                html += '    <button data-id="' + it.id + '" class="item-cancel-req-btn cancel-btn" style="width: 100%;">신청 취소하기</button>';
               } else {
-                var reqLen = (it.requesters && it.requesters.length) || 0;
-                html += '    <button onclick="handleRequest(\'' + it.id + '\')" class="select-btn" style="width: 100%;">받고 싶어요 (' + reqLen + '명)</button>';
+                const reqLen = (it.requesters && it.requesters.length) || 0;
+                html += '    <button data-id="' + it.id + '" class="item-req-btn select-btn" style="width: 100%;">받고 싶어요 (' + reqLen + '명)</button>';
               }
             }
           } else {
@@ -488,7 +483,7 @@
       /* 🛠️ 사진 파일 단 1장만 로드하고 실시간 단독 프리뷰 미리보기를 연결하는 첨부 슬롯 */
       html += '  <div class="form-group">';
       html += '    <label class="form-label">물품 사진 (최대 1장)</label>';
-      html += '    <input type="file" id="form-image" accept="image/*" class="form-input" onchange="previewImage(this)" />';
+      html += '    <input type="file" id="form-image" accept="image/*" class="form-input" />';
       html += '    <div id="image-preview-area" style="margin-top: 10px; display: none;">';
       html += '      <img id="form-preview-img" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #DCD3BC;" />';
       html += '    </div>';
@@ -499,7 +494,7 @@
       html += '    <textarea id="form-desc" rows="3" placeholder="물건의 상태나 수령 방법을 적어주세요." class="form-textarea"></textarea>';
       html += '  </div>';
 
-      html += '  <button onclick="handlePostItem()" class="action-btn" id="post-submit-btn" style="margin-top: 10px;">나눔 올리기</button>';
+      html += '  <button id="post-submit-btn" class="action-btn" style="margin-top: 10px;">나눔 올리기</button>';
       html += '</div>';
     }
 
@@ -521,7 +516,7 @@
           html += '  <div style="margin-top: 12px; display: flex; gap: 8px;">';
           
           if (it.status === 'open') {
-            html += '    <button onclick="handleCancelItem(\'' + it.id + '\', \'' + iPath + '\')" class="cancel-btn" style="background: #EF9A9A; color: #B71C1C; border: none;">';
+            html += '    <button data-id="' + it.id + '" data-path="' + iPath + '" class="mine-cancel-item-btn cancel-btn" style="background: #EF9A9A; color: #B71C1C; border: none;">';
             html += '      나눔 취소하기';
             html += '    </button>';
           } else {
@@ -538,11 +533,11 @@
       html += '<div class="admin-panel-box">';
       html += '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">';
       html += '    <h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3>';
-      html += '    <button onclick="switchTab(\'browse\')" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button>';
+      html += '    <button id="admin-exit-btn" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button>';
       html += '  </div>';
       
       html += '  <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>';
-      html += '  <button onclick="handleAdminChangePin()" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>';
+      html += '  <button id="admin-change-pin-btn" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>';
       
       html += '  <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기 (' + allItems.length + '개)</div>';
       if (allItems.length === 0) {
@@ -554,7 +549,7 @@
           html += '      <strong>' + it.title + '</strong>' + (it.image ? " 🖼️" : "") + '<br/>';
           html += '      <span style="font-size:11px; color:#888;">작성자: ' + it.giverId + ' · 상태: ' + it.status + '</span>';
           html += '    </div>';
-          html += '    <button onclick="handleAdminForceDelete(\'' + it.id + '\', \'' + (it.imagePath || '') + '\')" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button>';
+          html += '    <button data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" class="admin-force-delete-btn" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button>';
           html += '  </div>';
         });
       }
@@ -577,7 +572,7 @@
           var isBlocked = blockedUsers.indexOf(uId) !== -1;
           html += '  <div class="admin-list-item">';
           html += '    <span>👤 <strong>' + uId + '</strong>' + (isBlocked ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span>';
-          html += '    <button onclick="handleAdminToggleBlock(\'' + uId + '\')" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">';
+          html += '    <button data-userid="' + uId + '" class="admin-toggle-block-btn" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">';
           html += isBlocked ? '차단해제' : '유저차단';
           html += '    </button>';
           html += '  </div>';
@@ -585,64 +580,102 @@
       }
 
       html += '  <div class="admin-sub-title">시즌 마감 및 전체 데이터 마스터 초기화</div>';
-      html += '  <button onclick="handleAdminDeleteSeason(' + season + ')" style="background:#B34A4A; color:white; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:13.5px; margin-top:8px;">⚠️ 현재 시즌 종료 및 데이터 전면 초기화</button>';
+      html += '  <button id="admin-reset-season-btn" style="background:#B34A4A; color:white; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:13.5px; margin-top:8px;">⚠️ 현재 시즌 종료 및 데이터 전면 초기화</button>';
       html += '</div>';
     }
 
     container.innerHTML = html;
+
+    // 🛠️ 동적 렌더링 이후 생성된 버튼들에 이벤트 리스너를 실시간으로 안전하게 안전 바인딩 처리
+    bindDynamicEvents();
   }
 
-  function toggleShowDone() { showDone = !showDone; renderCurrentTab(); }
-  function handleRequest(id) { fbApi.requestItem(id, myId).then(function() { showToast("신청이 완료되었어요."); }); }
-  function handleCancelRequest(id) { fbApi.cancelRequest(id, myId).then(function() { showToast("신청을 취소했어요."); }); }
-  
-  function previewImage(input) {
-    if (input.files && input.files[0]) {
-      document.getElementById('image-preview-area').style.display = 'block';
-      document.getElementById('form-preview-img').src = URL.createObjectURL(input.files[0]);
-    }
-  }
+  // 🛠️ 대시보드가 새로 그려질 때마다 상단 온클릭 간섭 없이 동작 함수를 가로채 실행하는 모듈식 결속 장치
+  function bindDynamicEvents() {
+    const adminGateBtn = document.getElementById('admin-gate-btn');
+    if (adminGateBtn) adminGateBtn.addEventListener('click', function() { switchTab('admin'); });
 
-  function handlePostItem() {
-    var title = document.getElementById('form-title').value;
-    var desc = document.getElementById('form-desc').value;
-    var fileInput = document.getElementById('form-image');
-    var file = fileInput && fileInput.files && fileInput.files[0];
+    const toggleDoneBtn = document.getElementById('toggle-done-btn');
+    if (toggleDoneBtn) toggleDoneBtn.addEventListener('click', toggleShowDone);
 
-    if (!title.trim()) { alert("물품 이름을 입력하세요."); return; }
-    
-    var btn = document.getElementById('post-submit-btn');
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = "🚀 사진 및 나눔 물품 등록 중...";
-    }
-
-    if (file) {
-      fbApi.uploadImage(file, myId).then(function(res) {
-        saveToFirestore(title, desc, res.url, res.imagePath);
-      });
-    } else {
-      saveToFirestore(title, desc, "", "");
-    }
-  }
-
-  function saveToFirestore(title, desc, url, path) {
-    fbApi.addItem({
-      title: title.trim(), desc: desc.trim(), category: "etc",
-      giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
-      image: url, imagePath: path
-    }).then(function() {
-      showToast("나눔 물품이 등록되었어요.");
-      switchTab('browse');
+    document.querySelectorAll('.item-req-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { handleRequest(this.getAttribute('data-id')); });
     });
-  }
 
-  function handleCancelItem(id, imagePath) {
-    if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
-      fbApi.deleteItem(id, imagePath).then(function() {
-        showToast("나눔 등록을 취소했습니다.");
+    document.querySelectorAll('.item-cancel-req-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { handleCancelRequest(this.getAttribute('data-id')); });
+    });
+
+    const fileInput = document.getElementById('form-image');
+    if (fileInput) {
+      fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+          const area = document.getElementById('image-preview-area');
+          const img = document.getElementById('form-preview-img');
+          if (area && img) {
+            area.style.display = 'block';
+            img.src = URL.createObjectURL(this.files[0]);
+          }
+        }
       });
     }
+
+    const postSubmitBtn = document.getElementById('post-submit-btn');
+    if (postSubmitBtn) {
+      postSubmitBtn.addEventListener('click', function() {
+        const titleVal = document.getElementById('form-title').value;
+        const descVal = document.getElementById('form-desc').value;
+        const fileIn = document.getElementById('form-image');
+        const file = fileIn && fileIn.files && fileIn.files[0];
+
+        if (!titleVal.trim()) { alert("물품 이름을 입력하세요."); return; }
+        this.disabled = true;
+        this.innerText = "🚀 사진 및 나눔 물품 등록 중...";
+
+        if (file) {
+          fbApi.uploadImage(file, myId).then(function(res) {
+            fbApi.addItem({
+              title: titleVal.trim(), desc: descVal.trim(), category: "etc",
+              giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
+              image: res.url, imagePath: res.imagePath
+            }).then(function() { showToast("나눔 물품이 등록되었어요."); switchTab('browse'); });
+          });
+        } else {
+          fbApi.addItem({
+            title: titleVal.trim(), desc: descVal.trim(), category: "etc",
+            giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
+            image: "", imagePath: ""
+          }).then(function() { showToast("나눔 물품이 등록되었어요."); switchTab('browse'); });
+        }
+      });
+    }
+
+    document.querySelectorAll('.mine-cancel-item-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
+          fbApi.deleteItem(this.getAttribute('data-id'), this.getAttribute('data-path')).then(function() {
+            showToast("나눔 등록을 취소했습니다.");
+          });
+        }
+      });
+    });
+
+    const adminExitBtn = document.getElementById('admin-exit-btn');
+    if (adminExitBtn) adminExitBtn.addEventListener('click', function() { switchTab('browse'); });
+
+    const adminChangePinBtn = document.getElementById('admin-change-pin-btn');
+    if (adminChangePinBtn) adminChangePinBtn.addEventListener('click', handleAdminChangePin);
+
+    const adminResetSeasonBtn = document.getElementById('admin-reset-season-btn');
+    if (adminResetSeasonBtn) adminResetSeasonBtn.addEventListener('click', function() { handleAdminDeleteSeason(season); });
+
+    document.querySelectorAll('.admin-force-delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { handleAdminForceDelete(this.getAttribute('data-id'), this.getAttribute('data-path')); });
+    });
+
+    document.querySelectorAll('.admin-toggle-block-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { handleAdminToggleBlock(this.getAttribute('data-userid')); });
+    });
   }
 </script>
 </body>

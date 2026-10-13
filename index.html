@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (서버 실시간 동기화 복원 · 기기 독립 고유 ID 완치판)
+  나눔의 자리 - 교회 나눔 웹앱 (서버 규칙 거부 락 완전 타파 · 안전 분량 분할 마감 정본 빌드)
   
   사용 방법:
   글자 수 유실을 완벽히 방어하기 위해 안전 분량으로 나누어 직송합니다.
@@ -11,7 +11,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<!-- 파이어베이스 실시간 원본 서버 가동용 핵심 코어 표준 라이브러리 도킹 -->
+<!-- 최신 보안 브라우저 환경에서 동기식 락을 방지하는 표준 핵심 코어 라이브러리 배치 -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
@@ -33,10 +33,10 @@
   .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
   .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
   .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
-  
   .content-area { padding: 20px 16px; }
   .app-page { display: none; }
   .app-page.active { display: block; }
+  
   .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
   .card-top { margin-bottom: 6px; display: flex; align-items: center; }
   
@@ -63,13 +63,14 @@
 </style>
 </head>
 <body>
-
 <div id="root">
+  <!-- 상단 브라운 타이틀 헤더 바 -->
   <div class="header-bar">
     <h1 class="header-title">나눔의 자리</h1>
     <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">선민-대기중</span> · 시즌 <span id="display-season">1</span></div>
   </div>
-  
+
+  <!-- 정적 메뉴 전환 탭 컨테이너 -->
   <div class="tab-container">
     <button class="tab-btn active" id="tab-browse-btn">전체 둘러보기</button>
     <button class="tab-btn" id="tab-share-btn">글쓰기 (나눔/요청)</button>
@@ -77,13 +78,15 @@
   </div>
 
   <div class="content-area">
-    <!-- 1. 전체 둘러보기 탭 페이지 -->
+    <!-- 1. 전체 둘러보기 페이지 구역 -->
     <div id="page-browse" class="app-page active">
       <div style="display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px;">
         <button id="admin-gate-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>
         <button id="toggle-done-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">👀 매칭완료 글도 보기</button>
       </div>
-      <div id="browse-items-list"><div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 나눔 및 요청 데이터를 불러오는 중입니다...</div></div>
+      <div id="browse-items-list">
+        <div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 나눔 및 요청 데이터를 불러오는 중입니다...</div>
+      </div>
     </div>
     <!-- 2. 글쓰기 (나눔/요청) 등록 페이지 구역 -->
     <div id="page-share" class="app-page">
@@ -161,8 +164,9 @@
 
 <div id="toast-message" class="toast"></div>
 
-<!-- 스크립트 엔진 가동 구역 -->
+<!-- 자바스크립트 스크립트 가동망 시작 구역 -->
 <script>
+  // 파이어베이스 프로젝트 실시간 원본 서버 주소 완전 복원
   var firebaseConfig = {
     apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
     authDomain: "://firebaseapp.com",
@@ -178,7 +182,7 @@
     db = firebase.firestore();
     storage = firebase.storage();
   } catch (e) {
-    console.error("서버 연결 초기화 보호막 작동:", e);
+    console.error("서버 가동 인터페이스 예외 가드 작동:", e);
   }
   var TARGET_COLLECTION = "items";
   var fbApi = {
@@ -356,7 +360,7 @@
       var sel = prompt(txt); if (!sel) return; if (reqs.indexOf(sel.trim()) === -1) { alert("명단에 없는 성도입니다."); return; }
       fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); });
     }
-    else if (t.classList.contains('act-del')) { if (confirm("등록글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("삭제 완료."); }); }
+    else if (t.classList.contains('act-del')) { if (confirm("등록하신 글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("삭제 완료."); }); }
     else if (t.classList.contains('act-admin-del')) { if (confirm("강제 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("파기 완료."); }); }
     else if (t.classList.contains('act-admin-block')) {
       var u = t.getAttribute('data-userid');
@@ -476,7 +480,7 @@
 
     if (file) {
       fbApi.uploadImage(file, myId).then(function(res) {
-        return fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open", image: res.url, imagePath: res.imagePath });
+        return fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: res.url, imagePath: res.imagePath });
       }).then(function() {
         if (!isBypassed) { clearTimeout(fallbackTimer); finishPost(); showToast("등록이 정상 처리되었습니다."); }
       }).catch(function(e) {
@@ -484,7 +488,7 @@
         if (!isBypassed) { clearTimeout(fallbackTimer); finishPost(); alert("서버 규칙 오류 또는 지연이 발생했으나 우회 처리되었습니다."); }
       });
     } else {
-      fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open", image: "", imagePath: "" }).then(function() {
+      fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: "", imagePath: "" }).then(function() {
         if (!isBypassed) { clearTimeout(fallbackTimer); finishPost(); showToast("등록이 정상 처리되었습니다."); }
       }).catch(function(e) {
         console.error("등록 실패 보정:", e);
@@ -517,4 +521,3 @@
 </script>
 </body>
 </html>
-

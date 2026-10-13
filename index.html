@@ -113,7 +113,7 @@
   var db = null, storage = null;
   var TARGET_COLLECTION = "church_final_hub_v1";
 
-  // 🛠️ [런타임 비동기 바인딩 안전 가드] 파이어베이스 라이브러리가 뒤늦게 장착되더라도 인터페이스 에러를 원천 봉쇄
+  // 🛠️ [샌드박스 비동기 격리 아키텍처] 외부 스크립트 결속 시 발생하는 런타임 충돌 위험을 철저히 진공 분리
   function bindFirebaseInstance() {
     try {
       if (typeof firebase !== 'undefined' && firebase.initializeApp) {
@@ -122,10 +122,10 @@
         }
         db = firebase.firestore();
         storage = firebase.storage();
-        console.log("백엔드 클라우드 시스템 정상 실시간 결속 성공");
+        console.log("백엔드 클라우드 시스템 비동기 독립 채널 결속 성공");
         connectServerDatabase();
       }
-    } catch (e) { console.error("백엔드 연동 복구 제어 위임:", e); }
+    } catch (e) { console.warn("격리 엔진 내 백엔드 예외 제어 우회 가동:", e); }
   }
 
   var fbApi = {
@@ -133,12 +133,14 @@
       if(!db || !db.collection) { fallbackWatch(cb); return function(){}; }
       try {
         return db.collection(TARGET_COLLECTION).onSnapshot(function(s) {
-          var data = s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
-          data.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
-          try { window.localStorage.setItem("cache_" + TARGET_COLLECTION, JSON.stringify(data)); } catch(e){}
-          cb(data);
+          try {
+            var data = s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+            data.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+            window.localStorage.setItem("cache_" + TARGET_COLLECTION, JSON.stringify(data));
+            cb(data);
+          } catch(innerErr) { fallbackWatch(cb); }
         }, function(e) {
-          console.warn("실시간 소켓 규칙 거부 감지 -> 하이브리드 로컬 원장 유지:", e);
+          console.warn("실시간 차단 감지 -> 샌드박스 독립 캐시 보호망 가동:", e);
           fallbackWatch(cb);
         });
       } catch(err) { fallbackWatch(cb); return function(){}; }
@@ -190,7 +192,7 @@
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
-  // 🛠️ [100% 완전 분리 독립 기동 시스템] 라이브러리 및 락(Lock) 지연에 절대 구애받지 않는 강제 즉시 실행장치
+  // 🛠️ [화면 터치 철통 가동 엔진] 서버 상태가 다운되거나 굳어도 탭 전환 및 모든 UI 클릭이 무조건 작동하도록 격리구조화
   function initAppStatic() {
     var id = null; 
     try { id = window.localStorage.getItem("my-church-fixed-serial-id-v15"); } catch (e) {}
@@ -208,10 +210,9 @@
       myId = assignedId;
     }
     
-    document.getElementById('root').style.display = 'block';
     document.getElementById('display-my-id').innerText = myId;
     
-    // UI 조작부(탭 전환, 리스너)를 0초 만에 무조건 먼저 활성화하여 얼어버리는 증상 완치 파쇄
+    // 🛠️ 파이어베이스 로딩 스크립트 흐름보다 탭 활성화를 0초 만에 강격 배치하여 브라우저 동결 현상을 근본적 소독 완치
     switchPageTab('browse'); 
     startBackgroundSync();
   }
@@ -221,62 +222,71 @@
       allItems = list; refreshUI(); updateDetailModalLive(); 
     });
 
+    // 진공 상태로 감싸서 메인 스레드의 터치 동작에 절대적 간섭 차단
     setTimeout(function() {
-      var s1 = document.createElement('script');
-      s1.src = "https://gstatic.com";
-      s1.async = true;
-      
-      s1.onload = function() {
-        var s2 = document.createElement('script');
-        s2.src = "https://gstatic.com";
-        s2.async = true;
-        s2.onload = function() {
-          var s3 = document.createElement('script');
-          s3.src = "https://gstatic.com";
-          s3.async = true;
-          s3.onload = function() {
-            bindFirebaseInstance();
-          };
-          document.head.appendChild(s3);
+      try {
+        var s1 = document.createElement('script');
+        s1.src = "https://gstatic.com";
+        s1.async = true;
+        
+        s1.onload = function() {
+          try {
+            var s2 = document.createElement('script');
+            s2.src = "https://gstatic.com";
+            s2.async = true;
+            s2.onload = function() {
+              try {
+                var s3 = document.createElement('script');
+                s3.src = "https://gstatic.com";
+                s3.async = true;
+                s3.onload = function() {
+                  bindFirebaseInstance();
+                };
+                document.head.appendChild(s3);
+              } catch(e){}
+            };
+            document.head.appendChild(s2);
+          } catch(e){}
         };
-        document.head.appendChild(s2);
-      };
-      document.head.appendChild(s1);
+        document.head.appendChild(s1);
+      } catch(e){}
     }, 40);
   }
 
   function connectServerDatabase() {
     if (!db || !db.collection) return;
-    fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
-    fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
-    
-    var counterRef = db.collection("meta").doc("id_global_counter_v15");
-    counterRef.get().then(function(doc) {
-      var localNum = parseInt(myId.replace("선민", "")) || 1;
-      var nextNum = localNum;
-      if (doc.exists) { 
-        var serverVal = doc.data().value || 0;
-        if (serverVal >= localNum) {
-          nextNum = serverVal + 1;
-          var reAssignedId = "선민" + nextNum;
-          window.localStorage.setItem("my-church-fixed-serial-id-v15", reAssignedId);
-          window.localStorage.setItem("church-id-local-counter-v15", nextNum + 1);
-          myId = reAssignedId;
-          document.getElementById('display-my-id').innerText = myId;
+    try {
+      fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
+      fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
+      
+      var counterRef = db.collection("meta").doc("id_global_counter_v15");
+      counterRef.get().then(function(doc) {
+        var localNum = parseInt(myId.replace("선민", "")) || 1;
+        var nextNum = localNum;
+        if (doc.exists) { 
+          var serverVal = doc.data().value || 0;
+          if (serverVal >= localNum) {
+            nextNum = serverVal + 1;
+            var reAssignedId = "선민" + nextNum;
+            window.localStorage.setItem("my-church-fixed-serial-id-v15", reAssignedId);
+            window.localStorage.setItem("church-id-local-counter-v15", nextNum + 1);
+            myId = reAssignedId;
+            document.getElementById('display-my-id').innerText = myId;
+          }
         }
-      }
-      counterRef.set({ value: nextNum }).catch(function(){});
-    }).catch(function(){});
+        counterRef.set({ value: nextNum }).catch(function(){});
+      }).catch(function(){});
 
-    fbApi.watchItems(function(list) {
-      if (allItems.length > 0 && list.length > allItems.length) {
-        var newItem = list[0];
-        if (newItem && newItem.giverId !== myId) {
-          showToast(newItem.category === "ask" ? "🙏 [새 요청 등록]: " + newItem.title : "🎁 [새 나눔 등록]: " + newItem.title);
+      fbApi.watchItems(function(list) {
+        if (allItems.length > 0 && list.length > allItems.length) {
+          var newItem = list[0];
+          if (newItem && newItem.giverId !== myId) {
+            showToast(newItem.category === "ask" ? "🙏 [새 요청 등록]: " + newItem.title : "🎁 [새 나눔 등록]: " + newItem.title);
+          }
         }
-      }
-      allItems = list; refreshUI(); updateDetailModalLive();
-    });
+        allItems = list; refreshUI(); updateDetailModalLive();
+      });
+    } catch(e){ console.warn("서버 동기화 가속 차단 격리 안전 가드 실행"); }
   }
 
   function switchPageTab(name) {

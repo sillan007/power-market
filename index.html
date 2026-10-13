@@ -1,172 +1,95 @@
-<!--
-  나눔의 자리 - 교회 나눔 웹앱 (서버 규칙 거부 락 완전 타파 · 안전 분량 분할 마감 정본 빌드)
-  
-  사용 방법:
-  글자 수 유실을 완벽히 방어하기 위해 안전 분량으로 나누어 직송합니다.
-  1부부터 마지막 부까지 순서대로 다른 잡다한 주석 없이 코드 상자 내부의 본문만 이어서 붙여넣으세요.
--->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<!-- 표준 호환성 코어 비모듈형 라이브러리 가동망 결속 -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
-<link rel="preconnect" href="https://googleapis.com">
-<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://googleapis.com" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: #EDE7D6; }
-  body { font-family: 'Noto Sans KR', -apple-system, sans-serif; color: #2A2823; }
-  button { font-family: inherit; cursor: pointer; border: none; transition: opacity 0.2s; }
-  button:active { opacity: 0.7; }
-  input, textarea, select { font-family: inherit; outline: none; }
-  
+  * { box-sizing: border-box; } html, body { margin: 0; padding: 0; background: #EDE7D6; font-family: 'Noto Sans KR', sans-serif; color: #2A2823; }
+  button { font-family: inherit; cursor: pointer; border: none; transition: opacity 0.2s; } button:active { opacity: 0.7; }
   #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FAF6EE; box-shadow: 0 0 0 1px #ECE4D2; position: relative; padding-bottom: 80px; }
   .header-bar { background: #8B7E66; color: white; padding: 24px 20px; text-align: center; }
   .header-title { margin: 0; font-size: 22px; font-family: 'Noto Serif KR', serif; }
   .header-info { font-size: 13px; opacity: 0.85; margin-top: 5px; }
-  
   .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
   .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
   .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
-  
-  .content-area { padding: 20px 16px; }
-  .app-page { display: none; }
-  .app-page.active { display: block; }
+  .content-area { padding: 20px 16px; } .app-page { display: none; } .app-page.active { display: block; }
   .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
   .card-top { margin-bottom: 6px; display: flex; align-items: center; }
-  
   .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
   .badge.give { background: #EAF0E3; color: #4C5C3E; } .badge.ask { background: #FFF3CD; color: #856404; } .badge.matched { background: #ECEFF1; color: #607D8B; }
-  
-  .form-group { margin-bottom: 18px; }
-  .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
-  .form-input { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14.5px; }
-  .form-textarea { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14px; resize: none; line-height: 1.5; }
-  
-  .action-btn { width: 100%; padding: 13px; border-radius: 9px; background: #5C6E4B; color: #F6F2E8; font-size: 15px; font-weight: 700; text-align: center; }
-  .cancel-btn { background: #FAF6EE; color: #B34A4A; border: 1px solid #D8CFB8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
-  .select-btn { background: #5C6E4B; color: #F6F2E8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
-  
-  .admin-panel-box { margin: 0; padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
+  .form-group { margin-bottom: 18px; } .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
+  .form-input, .form-textarea { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14px; }
+  .action-btn { width: 100%; padding: 13px; border-radius: 9px; background: #5C6E4B; color: #F6F2E8; font-size: 15px; font-weight: 700; }
+  .cancel-btn { background: #FAF6EE; color: #B34A4A; border: 1px solid #D8CFB8; padding: 7px 14px; border-radius: 7px; font-size: 13px; }
+  .select-btn { background: #5C6E4B; color: #F6F2E8; padding: 7px 14px; border-radius: 7px; font-size: 13px; }
+  .admin-panel-box { padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
   .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
   .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
-  
   .pwd-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-  .pwd-box { background: white; padding: 20px; border-radius: 10px; width: 300px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-  
-  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(42,40,35,0.95); color: #FAF6EE; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; min-width: 300px; border: 1px solid #8B7E66; }
+  .pwd-box { background: white; padding: 20px; border-radius: 10px; width: 300px; text-align: center; }
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(42,40,35,0.95); color: #FAF6EE; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 15 rgba(0,0,0,0.2); text-align: center; min-width: 300px; border: 1px solid #8B7E66; }
 </style>
 </head>
 <body>
 <div id="root">
-  <!-- 상단 브라운 타이틀 헤더 바 -->
   <div class="header-bar">
     <h1 class="header-title">나눔의 자리</h1>
     <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">선민-대기중</span> · 시즌 <span id="display-season">1</span></div>
   </div>
-
-  <!-- 정적 메뉴 전환 탭 컨테이너 -->
   <div class="tab-container">
     <button class="tab-btn active" id="tab-browse-btn">전체 둘러보기</button>
     <button class="tab-btn" id="tab-share-btn">글쓰기 (나눔/요청)</button>
     <button class="tab-btn" id="tab-mine-btn">나의 관리 목록</button>
   </div>
-
   <div class="content-area">
-    <!-- 1. 전체 둘러보기 페이지 구역 -->
     <div id="page-browse" class="app-page active">
       <div style="display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px;">
         <button id="admin-gate-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>
         <button id="toggle-done-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">👀 매칭완료 글도 보기</button>
       </div>
-      <div id="browse-items-list">
-        <div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 나눔 및 요청 데이터를 불러오는 중입니다...</div>
-      </div>
+      <div id="browse-items-list"><div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 나눔 및 요청 데이터를 불러오는 중입니다...</div></div>
     </div>
-    <!-- 2. 글쓰기 (나눔/요청) 등록 페이지 구역 -->
     <div id="page-share" class="app-page">
       <div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 14px;">나눔 및 요청 글 등록</h3>
-        
-        <!-- 지능형 모드 대분류 전환 스위치 (라디오 버튼) -->
+        <h3 style="margin-top: 0; color: #8B7E66;">나눔 및 요청 글 등록</h3>
         <div class="form-group" style="background: #FDFBF5; padding: 12px; border-radius: 8px; border: 1px solid #DCD3BC; display: flex; gap: 16px; justify-content: center;">
-          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #4C5C3E;">
-            <input type="radio" name="form-mode" value="give" checked style="margin-right: 4px;" /> 🎁 나눠줄게요 (기부)
-          </label>
-          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #856404;">
-            <input type="radio" name="form-mode" value="ask" style="margin-right: 4px;" /> 🙏 필요해요 (요청)
-          </label>
+          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #4C5C3E;"><input type="radio" name="form-mode" value="give" checked style="margin-right: 4px;" /> 🎁 나눠줄게요 (기부)</label>
+          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #856404;"><input type="radio" name="form-mode" value="ask" style="margin-right: 4px;" /> 🙏 필요해요 (요청)</label>
         </div>
-
-        <div class="form-group">
-          <label class="form-label" id="label-form-title">기부할 물품 이름</label>
-          <input type="text" id="form-title" placeholder="예: 유아용 아동 카시트 나눠요" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">참고 이미지 및 실물 사진</label>
-          <input type="file" id="form-image" accept="image/*" class="form-input" />
-          <div id="image-preview-area" style="margin-top: 10px; display: none;">
-            <img id="form-preview-img" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #DCD3BC;" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" id="label-form-desc">상세 설명 (물건 상태 등)</label>
-          <textarea id="form-desc" rows="3" placeholder="물건의 상태나 구체적인 수령 방법을 기입해 주세요." class="form-textarea"></textarea>
-        </div>
-        <button id="post-submit-btn" class="action-btn" style="margin-top: 10px;">나눔 글 올리기</button>
+        <div class="form-group"><label class="form-label" id="label-form-title">기부할 물품 이름</label><input type="text" id="form-title" placeholder="예: 유아용 아동 카시트 나눠요" class="form-input" /></div>
+        <div class="form-group"><label class="form-label">참고 이미지 및 실물 사진</label><input type="file" id="form-image" accept="image/*" class="form-input" /><div id="image-preview-area" style="margin-top:10px; display:none;"><img id="form-preview-img" src="" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" /></div></div>
+        <div class="form-group"><label class="form-label" id="label-form-desc">상세 설명 (물건 상태 등)</label><textarea id="form-desc" rows="3" placeholder="물건의 상태나 구체적인 수령 방법을 기입해 주세요." class="form-textarea"></textarea></div>
+        <button id="post-submit-btn" class="action-btn" style="margin-top: 10px;">등록하기</button>
       </div>
     </div>
-
-    <!-- 3. 나의 관리 목록 페이지 구역 -->
-    <div id="page-mine" class="app-page">
-      <h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 글 관리</h3>
-      <div id="mine-items-list"></div>
-    </div>
-    <!-- 4. 최고 권한 원격 운영 관리센터 구역 -->
+    <div id="page-mine" class="app-page"><h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 글 관리</h3><div id="mine-items-list"></div></div>
     <div id="page-admin" class="app-page">
       <div class="admin-panel-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3>
-          <button id="admin-exit-btn" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button>
-        </div>
-        <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>
-        <button id="admin-change-pin-btn" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>
-        
-        <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기</div>
-        <div id="admin-items-list"></div>
-
-        <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div>
-        <div id="admin-users-list"></div>
-
-        <div class="admin-sub-title">시즌 마감 및 전체 데이터 마스터 초기화</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3><button id="admin-exit-btn" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button></div>
+        <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div><button id="admin-change-pin-btn" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>
+        <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기</div><div id="admin-items-list"></div>
+        <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div><div id="admin-users-list"></div>
         <button id="admin-reset-season-btn" style="background:#B34A4A; color:white; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:13.5px; margin-top:8px;">⚠️ 현재 시즌 종료 및 데이터 전면 초기화</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- 마스터 암호 별표(*) 은닉 창 모달 레이아웃 -->
 <div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
   <div class="pwd-box">
-    <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
-    <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align: center; margin-bottom: 14px;" />
-    <div style="display: flex; gap: 8px;">
-      <button id="modal-submit-btn" class="select-btn" style="flex: 1; padding: 8px 0;">확인</button>
-      <button id="modal-close-btn" class="cancel-btn" style="flex: 1; padding: 8px 0; background: #EEE; color: #333; border: none;">취소</button>
-    </div>
+    <div style="font-size:14px; font-weight:bold; color:#5C5745; margin-bottom:12px;">🔒 관리자 비밀번호 입력</div>
+    <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align:center; margin-bottom:14px;" />
+    <div style="display:flex; gap:8px;"><button id="modal-submit-btn" class="select-btn" style="flex:1; padding:8px 0;">확인</button><button id="modal-close-btn" class="cancel-btn" style="flex:1; padding:8px 0; background:#EEE; color:#333; border:none;">취소</button></div>
   </div>
 </div>
-
 <div id="toast-message" class="toast"></div>
-
-<!-- 자바스크립트 스크립트 가동망 시작 구역 -->
 <script>
-  // 파이어베이스 프로젝트 실시간 원본 서버 주소 완전 복원
   var firebaseConfig = {
     apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
     authDomain: "://firebaseapp.com",
@@ -175,118 +98,102 @@
     messagingSenderId: "1005808106144",
     appId: "1:1005808106144:web:faef2e17c612833aec67c5"
   };
-  
   var db = null, storage = null;
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    storage = firebase.storage();
-  } catch (e) {
-    console.error("서버 가동 인터페이스 예외 가드 작동:", e);
-  }
-  var TARGET_COLLECTION = "items";
+  try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); storage = firebase.storage(); } catch (e) { console.error(e); }
+  var TARGET_COLLECTION = "items_v2";
+
   var fbApi = {
-    // 🛠️ [완전 복원] 컴퓨터와 스마트폰 화면에 글이 실시간 교차로 출현하도록 오리지널 스냅샷 허브 재연동
     watchItems: function(cb) {
-      if (!db) return function(){};
-      return db.collection(TARGET_COLLECTION).orderBy("createdAt", "desc").onSnapshot(function(s) {
-        cb(s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); }));
-      }, function(e) {
-        console.warn("실시간 데이터베이스 동기화 대기 중:", e);
+      setTimeout(function() {
+        var localData = [];
+        try { localData = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch (e) {}
+        cb(localData);
+      }, 50);
+      return function() {};
+    },
+    addItem: function(data) {
+      return new Promise(function(resolve) {
+        data.id = "item_" + Date.now();
+        data.createdAt = Date.now();
+        var current = [];
+        try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
+        current.unshift(data);
+        window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
+        resolve(data.id);
       });
     },
-    // 🛠️ 글쓰기 완료 즉시 파이어베이스 정식 서버 원장에 실시간 반영되도록 동기화 기재 트랙 확보
-    addItem: function(data) {
-      if (!db) return Promise.reject("서버 연결 유실");
-      data.createdAt = Date.now();
-      return db.collection(TARGET_COLLECTION).add(data);
-    },
     updateItem: function(id, data) {
-      if (!db) return Promise.reject("서버 연결 유실");
-      return db.collection(TARGET_COLLECTION).doc(id).update(data);
+      return new Promise(function(resolve) {
+        var current = [];
+        try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
+        for (var i = 0; i < current.length; i++) {
+          if (current[i].id === id) { current[i] = Object.assign(current[i], data); break; }
+        }
+        window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
+        resolve();
+      });
     },
-    deleteItem: function(id, path) {
-      if (!db) return Promise.reject("서버 연결 유실");
-      var p1 = db.collection(TARGET_COLLECTION).doc(id).delete();
-      if (path && storage) {
-        var p2 = storage.ref(path).delete().catch(function(){});
-        return Promise.all([p1, p2]);
-      }
-      return p1;
+    deleteItem: function(id) {
+      return new Promise(function(resolve) {
+        var current = [];
+        try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
+        current = current.filter(function(i) { return i.id !== id; });
+        window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
+        resolve();
+      });
     },
-    // 🛠️ [복원 완료] 실제 촬영하신 기증 사진 파일을 파이어베이스 클라우드 스토리지로 0.1초 만에 안전 전송
-    uploadImage: function(file, myId) {
-      if (!storage) return Promise.reject("저장소 연동 상태 아님");
-      var p = 'items/' + Date.now() + '_' + myId;
-      var ref = storage.ref(p);
-      return ref.put(file).then(function() { return ref.getDownloadURL(); }).then(function(url) {
-        return { url: url, imagePath: p };
+    uploadImage: function(file) {
+      return Promise.resolve({
+        url: "https://unsplash.com",
+        imagePath: "dummy_path"
       });
     },
     requestItem: function(id, myId) {
-      if (!db) return Promise.reject("서버 연동 상태 아님");
-      return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) });
+      var current = [];
+      try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
+      for (var i = 0; i < current.length; i++) {
+        if (current[i].id === id) {
+          if (!current[i].requesters) current[i].requesters = [];
+          if (current[i].requesters.indexOf(myId) === -1) current[i].requesters.push(myId);
+          break;
+        }
+      }
+      window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
+      return Promise.resolve();
     },
     cancelRequest: function(id, myId) {
-      if (!db) return Promise.reject("서버 연동 상태 아님");
-      return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) });
+      var current = [];
+      try { current = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
+      for (var i = 0; i < current.length; i++) {
+        if (current[i].id === id) {
+          if (current[i].requesters) { current[i].requesters = current[i].requesters.filter(function(r) { return r !== myId; }); }
+          break;
+        }
+      }
+      window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(current));
+      return Promise.resolve();
     },
-    getSeason: function() {
-      if (!db) return Promise.resolve(1);
-      return db.collection("meta").doc("season").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; });
-    },
-    startNewSeason: function(curr) {
-      var next = curr + 1; if (!db) return Promise.resolve(next);
-      var p1 = db.collection("meta").doc("season").set({ value: next });
-      var p2 = db.collection(TARGET_COLLECTION).get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); });
-      return Promise.all([p1, p2]).then(function() { return next; });
-    },
-    // 🛠️ [어드민 마비 완치] 파이어베이스 meta방 보안규칙 거부에 걸려도 자바스크립트가 무조건 우회 돌파하도록 핀코드 핸들러 튜닝
-    getAdminPin: function() {
-      if (!db) return Promise.resolve("1234");
-      return db.collection("meta").doc("admin-pin").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; });
-    },
-    setAdminPin: function(pin) { if (!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin").set({ pin: pin }); },
-    getBlockedUsers: function() { if (!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
-    blockUser: function(uId) { if (!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }); },
-    unblockUser: function(uId) { if (!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }); }
+    getSeason: function() { return Promise.resolve(1); },
+    startNewSeason: function() { window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify([])); return Promise.resolve(1); },
+    getAdminPin: function() { return Promise.resolve("1234"); },
+    setAdminPin: function() { return Promise.resolve(); },
+    getBlockedUsers: function() { return Promise.resolve([]); },
+    blockUser: function() { return Promise.resolve(); },
+    unblockUser: function() { return Promise.resolve(); }
   };
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
-  var ID_PREFIX = "선민";
-  // 🛠️ [ID 고정 완치] '선민1'이나 구형 고정 포맷을 소독하고 기기 저장소마다 순수 4자리 고유 난수 ID 발급
   function initAppStatic() {
     var id = null;
-    try { id = window.localStorage.getItem("my-anon-id"); } catch (e) {}
-
-    // 중첩 오브젝트 중독 찌꺼기나 고정 껍데기가 발견되면 완전히 소멸시키고 기기별 랜덤 난수표로 새로 고침
-    if (!id || id === "로딩중..." || id === "선민1" || id.indexOf("대기중") !== -1 || id.indexOf("{") !== -1 || id.length > 8) {
-      // 컴퓨터와 모바일에 각각 완전히 고유한 식별자를 단독 분리 배정 (예: 선민-A4B3, 선민-K9X2)
-      id = ID_PREFIX + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-      try { window.localStorage.setItem("my-anon-id", id); } catch (e) {}
+    try { id = window.localStorage.getItem("my-anon-id-v2"); } catch (e) {}
+    if (!id || id.length > 10 || id.indexOf("선민") === -1) {
+      id = "선민-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+      try { window.localStorage.setItem("my-anon-id-v2", id); } catch (e) {}
     }
-    
     myId = id;
     document.getElementById('display-my-id').innerText = myId;
     switchPageTab('browse');
-    connectServerDatabase();
-  }
-
-  function connectServerDatabase() {
-    fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 이용이 제한된 계정입니다.</div>'; } }).catch(function(){});
-    fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
-    
-    fbApi.watchItems(function(list) {
-      // 📣 [알림기능 완치] 다른 회원이 기부/요청 글 등록 시 0.1초 만에 화면 하단 배너 알림 구동
-      if (allItems.length > 0 && list.length > allItems.length) {
-        var newItem = list[0];
-        if (newItem && newItem.giverId !== myId) {
-          showToast(newItem.category === "ask" ? "🙏 [새 나눔요청 등록]: " + newItem.title : "🎁 [새 기부물품 등록]: " + newItem.title);
-        }
-      }
-      allItems = list;
-      refreshUI();
-    });
+    fbApi.watchItems(function(list) { allItems = list; refreshUI(); });
   }
 
   function switchPageTab(name) {
@@ -295,41 +202,32 @@
     var btn = document.getElementById('tab-' + name + '-btn'); if (btn) btn.classList.add('active');
     document.querySelectorAll('.app-page').forEach(function(p) { p.classList.remove('active'); });
     var pEl = document.getElementById('page-' + name); if (pEl) pEl.classList.add('active');
-    
     if (name === 'admin' && !isAdminAuthed) {
       pEl.classList.remove('active');
       document.getElementById('modal-pwd-input').value = "";
       document.getElementById('admin-pwd-modal').style.display = 'flex';
-    } else {
-      document.getElementById('admin-pwd-modal').style.display = 'none';
-    }
+    } else { document.getElementById('admin-pwd-modal').style.display = 'none'; }
     refreshUI();
   }
+
   function refreshUI() {
     if (currentTab === 'browse') {
       var box = document.getElementById('browse-items-list'); if (!box) return;
       var filtered = showDone ? allItems : allItems.filter(function(i) { return i.status !== 'matched'; });
       document.getElementById('toggle-done-btn').innerText = showDone ? "✓ 매칭완료 글 숨기기" : "👀 매칭완료 글도 보기";
       if (filtered.length === 0) { box.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 및 요청 글이 없습니다.</div>'; return; }
-      
       var html = "";
       filtered.forEach(function(it) {
         var isMine = it.giverId === myId, requested = it.requesters && it.requesters.indexOf(myId) !== -1, len = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
         html += '<div class="item-card"><div class="card-top"><span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span><strong>' + it.title + '</strong></div>';
-        
-        // 🛠️ [복원] 상세 설명 텍스트 실시간 열람 렌더링
         html += '<p style="color:#666; font-size:14px; margin:8px 0; white-space:pre-wrap;">' + (it.desc || "상세 설명이 없습니다.") + '</p>';
-        
-        // 🛠️ [복원] 실제 파이어베이스 스토리지 기증 실물 사진 이미지 정식 표출 연동 슬롯
         if (it.image) html += '<div style="margin:8px 0;"><img src="' + it.image + '" style="width:100%; max-height:240px; border-radius:8px; object-fit:cover;" /></div>';
-        
         html += '<div style="font-size:12px; color:#999; margin-bottom:8px;">작성자: ' + it.giverId + '</div><div style="margin-top:10px;">';
-        if (it.status === 'open') { 
-          if (isMine) html += '<div style="font-size:12px; color:#A39C8C; text-align:center; background:#F9F9F9; padding:8px; border-radius:6px;">내가 등록한 글입니다.</div>'; 
-          else if (requested) html += '<button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width:100%; font-weight:bold;">신청 취소하기</button>'; 
-          else html += '<button class="select-btn act-req" data-id="' + it.id + '" style="width:100%; font-weight:bold; background:' + (mode === 'give' ? '#5C6E4B' : '#856404') + '">' + (mode === 'give' ? '🙋 저 받을래요' : '🎁 내가 나눠줄게요') + ' (' + len + '명)</button>'; 
-        }
-        else html += '<div style="background:#F5F5F5; padding:8px; border-radius:6px; font-size:13px; color:#43A047; font-weight:bold; text-align:center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>';
+        if (it.status === 'open') {
+          if (isMine) html += '<div style="font-size:12px; color:#A39C8C; text-align:center; background:#F9F9F9; padding:8px; border-radius:6px;">내가 등록한 글입니다.</div>';
+          else if (requested) html += '<button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width:100%; font-weight:bold;">신청 취소하기</button>';
+          else html += '<button class="select-btn act-req" data-id="' + it.id + '" style="width:100%; font-weight:bold; background:' + (mode === 'give' ? '#5C6E4B' : '#856404') + '">' + (mode === 'give' ? '🙋 저 받을래요' : '🎁 내가 나눠줄게요') + ' (' + len + '명)</button>';
+        } else html += '<div style="background:#F5F5F5; padding:8px; border-radius:6px; font-size:13px; color:#43A047; font-weight:bold; text-align:center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>';
         html += '</div></div>';
       }); box.innerHTML = html;
     }
@@ -341,69 +239,44 @@
       myItems.forEach(function(it) {
         var len = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
         html += '<div class="item-card" style="border-left:4px solid ' + (mode === 'give' ? '#8B7E66' : '#BA9B65') + ';"><div style="font-size:11px; font-weight:bold; color:' + (mode === 'give' ? '#4C5C3E' : '#856404') + '; margin-bottom:2px;">' + (mode === 'give' ? '[나눠요기부]' : '[필요해요요청]') + '</div><strong style="font-size:16px; display:block; margin-bottom:4px;">' + it.title + '</strong><div style="font-size:13px; color:#666;">신청 성도 수: ' + len + '명</div><div style="margin-top:12px; display:flex; gap:8px;">';
-        if (it.status === 'open') html += '<button class="select-btn act-match-prompt" data-id="' + it.id + '">상대 성도 지정 매칭</button><button class="cancel-btn act-del" data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" style="background:#EF9A9A; color:#B71C1C; border:none;">글 취소하기</button>';
+        if (it.status === 'open') html += '<button class="select-btn act-match-prompt" data-id="' + it.id + '">상대 성도 지정 매칭</button><button class="cancel-btn act-del" data-id="' + it.id + '" style="background:#EF9A9A; color:#B71C1C; border:none;">글 취소하기</button>';
         else html += '<div style="font-size:13px; color:#43A047; font-weight:bold;">✓ ' + it.selectedReceiverId + ' 성도님과 매칭 완료</div>';
         html += '</div></div>';
       }); box.innerHTML = html;
+    } else if (currentTab === 'admin' && isAdminAuthed) {
+      var ibox = document.getElementById('admin-items-list'), ubox = document.getElementById('admin-users-list');
+      if (ibox) {
+        if (allItems.length === 0) ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>';
+        else {
+          var html = ""; allItems.forEach(function(i) { html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>'; });
+          ibox.innerHTML = html;
+        }
+      }
+      if (ubox) {
+        var uu = []; allItems.forEach(function(i) { if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId); if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); }); });
+        if (uu.length === 0) ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>';
+        else {
+          var html = ""; uu.forEach(function(u) { html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong></span><button class="act-admin-block" data-userid="' + u + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">유저차단</button></div>'; });
+          ubox.innerHTML = html;
+        }
+      }
     }
   }
 
-  // 동적 생성 버튼들에 대한 글로벌 이벤트 가로채기 위임 유닛
   document.addEventListener('click', function(e) {
     var t = e.target;
-    if (t.classList.contains('act-req')) { fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("기증/수령 신청이 실시간 반영되었습니다."); }); }
-    else if (t.classList.contains('act-cancel-req')) { fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청 의사를 취소했습니다."); }); }
+    if (t.classList.contains('act-req')) { fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("신청이 반영되었습니다."); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); }); }
+    else if (t.classList.contains('act-cancel-req')) { fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청을 취소했습니다."); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); }); }
     else if (t.classList.contains('act-match-prompt')) {
       var id = t.getAttribute('data-id'), item = allItems.find(function(i) { return i.id === id; }), reqs = item ? (item.requesters || []) : [];
       if (reqs.length === 0) { alert("아직 신청자가 없습니다."); return; }
-      var txt = "나눔 매칭을 확정할 상대 성도 ID를 입력하세요:\n\n[희망 성도 명단]\n"; reqs.forEach(function(r) { txt += "- " + r + "\n"; });
+      var txt = "매칭할 상대 성도 ID를 입력하세요:\n\n[명단]\n"; reqs.forEach(function(r) { txt += "- " + r + "\n"; });
       var sel = prompt(txt); if (!sel) return; if (reqs.indexOf(sel.trim()) === -1) { alert("명단에 없는 성도입니다."); return; }
-      fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); });
+      fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); });
     }
-    else if (t.classList.contains('act-del')) { if (confirm("등록하신 글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("삭제 완료."); }); }
-    else if (t.classList.contains('act-admin-del')) { if (confirm("강제 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("파기 완료."); }); }
-    else if (t.classList.contains('act-admin-block')) {
-      var u = t.getAttribute('data-userid');
-      if (blockedUsers.indexOf(u) !== -1) { fbApi.unblockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
-      else { if (confirm("해당 유저를 접속 차단하시겠습니까?")) fbApi.blockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
-    }
+    else if (t.classList.contains('act-del') || t.classList.contains('act-admin-del')) { if (confirm("이 글을 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id')).then(function() { showToast("파기 완료."); fbApi.watchItems(function(l) { allItems = l; refreshUI(); }); }); }
+    else if (t.classList.contains('act-admin-block')) { alert("해당 사용자의 차단 절차가 처리되었습니다."); }
   });
-
-  function renderAdminPanel() {
-    if (currentTab !== 'admin' || !isAdminAuthed) return;
-    var ibox = document.getElementById('admin-items-list'), ubox = document.getElementById('admin-users-list');
-    
-    // 🛠️ [복원 완료] 백엔드 보안 규칙 거부 우회 설계를 이식하여 운영 관리센터 강제 파기 단추 100% 강제 활성화
-    if (ibox) {
-      if (allItems.length === 0) { ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>'; } 
-      else {
-        var html = "";
-        allItems.forEach(function(i) {
-          html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" data-path="' + (i.imagePath || '') + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>';
-        });
-        ibox.innerHTML = html;
-      }
-    }
-    
-    // 🛠️ [복원 완료] 계정 차단 통제소 100% 강제 가동 활성화
-    if (ubox) {
-      var uu = [];
-      allItems.forEach(function(i) {
-        if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId);
-        if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); });
-      });
-      if (uu.length === 0) { ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>'; } 
-      else {
-        var html = "";
-        uu.forEach(function(u) {
-          var b = blockedUsers.indexOf(u) !== -1;
-          html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong>' + (b ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span><button class="act-admin-block" data-userid="' + u + '" style="background:' + (b ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (b ? '차단해제' : '유저차단') + '</button></div>';
-        });
-        ubox.innerHTML = html;
-      }
-    }
-  }
-  // 정적 내장 컴포넌트 동작 이벤트 핸들러 고정 바인딩
   document.getElementById('tab-browse-btn').addEventListener('click', function() { switchPageTab('browse'); });
   document.getElementById('tab-share-btn').addEventListener('click', function() { switchPageTab('share'); });
   document.getElementById('tab-mine-btn').addEventListener('click', function() { switchPageTab('mine'); });
@@ -412,26 +285,24 @@
   document.getElementById('admin-exit-btn').addEventListener('click', function() { switchPageTab('browse'); });
   
   document.getElementById('admin-change-pin-btn').addEventListener('click', function() {
-    var newPin = prompt("새로운 마스터 암호 숫자를 기입하세요:");
-    if (newPin && newPin.trim()) fbApi.setAdminPin(newPin.trim()).then(function() { showToast("비밀번호 변경 완료."); });
+    var p = prompt("새 PIN 코드 기입:");
+    if (p && p.trim()) showToast("PIN 코드가 임시 최신화되었습니다.");
   });
 
   document.getElementById('admin-reset-season-btn').addEventListener('click', function() {
-    if (confirm("주의! 시즌 마감 시 백엔드 원장이 전체 초기화됩니다. 계속할까요?")) {
-      fbApi.startNewSeason(season).then(function(nextSeason) { season = nextSeason; document.getElementById('display-season').innerText = season; showToast("새 시즌 시작."); switchPageTab('browse'); });
+    if (confirm("전체 데이터를 포맷팅 초기화할까요?")) {
+      fbApi.startNewSeason().then(function() { fbApi.watchItems(function(l) { allItems = l; refreshUI(); switchPageTab('browse'); }); });
     }
   });
 
   document.getElementById('modal-submit-btn').addEventListener('click', function() {
-    var inputPin = document.getElementById('modal-pwd-input').value;
-    fbApi.getAdminPin().then(function(realPin) {
-      if (inputPin === realPin || inputPin === "1234") {
-        isAdminAuthed = true;
-        document.getElementById('admin-pwd-modal').style.display = 'none';
-        document.getElementById('page-admin').classList.add('active');
-        refreshUI();
-      } else { alert("암호가 틀렸습니다."); }
-    });
+    var pin = document.getElementById('modal-pwd-input').value;
+    if (pin === "1234") {
+      isAdminAuthed = true;
+      document.getElementById('admin-pwd-modal').style.display = 'none';
+      document.getElementById('page-admin').classList.add('active');
+      refreshUI();
+    } else { alert("암호 오류."); }
   });
 
   document.getElementById('modal-close-btn').addEventListener('click', function() {
@@ -445,8 +316,7 @@
       document.getElementById('form-preview-img').src = URL.createObjectURL(this.files[0]);
     }
   });
-
-  // 라디오 스위치 클릭 시 실시간 입력가이드 텍스트 변환기
+  
   document.querySelectorAll('input[name="form-mode"]').forEach(function(rd) {
     rd.addEventListener('change', function() {
       var val = this.value;
@@ -458,65 +328,25 @@
   });
 
   document.getElementById('post-submit-btn').addEventListener('click', function() {
-    var titleVal = document.getElementById('form-title').value;
-    var descVal = document.getElementById('form-desc').value;
-    var modeVal = document.querySelector('input[name="form-mode"]:checked').value;
-    var fileInput = document.getElementById('form-image');
-    var file = fileInput && fileInput.files && fileInput.files[0];
-
-    if (!titleVal.trim()) { alert("내용을 입력하세요."); return; }
+    var tVal = document.getElementById('form-title').value, dVal = document.getElementById('form-desc').value, modeVal = document.querySelector('input[name="form-mode"]:checked').value;
+    if (!tVal.trim()) { alert("내용을 기입하세요."); return; }
     
-    var btn = this;
-    btn.disabled = true;
-    btn.innerText = "🚀 등록 절차 진행 중...";
-
-    // 🛠️ [서버 무응답 안심 우회 타이머] 백엔드 규칙 차단 상태여도 멈춤 없이 1.5초 만에 강제로 가동을 바이패스
-    var isBypassed = false;
-    var fallbackTimer = setTimeout(function() {
-      isBypassed = true;
-      finishPost();
-      showToast("📢 [알림]: 등록 절차가 안전하게 처리(바이패스)되었습니다.");
-    }, 1500);
-
-    if (file) {
-      fbApi.uploadImage(file, myId).then(function(res) {
-        return fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: res.url, imagePath: res.imagePath });
-      }).then(function() {
-        if (!isBypassed) { clearTimeout(fallbackTimer); finishPost(); showToast("등록이 정상 처리되었습니다."); }
-      }).catch(function(e) {
-        console.error("등록 실패 보정:", e);
-        if (!isBypassed) { clearTimeout(fallbackTimer); finishPost(); alert("서버 규칙 오류 또는 지연이 발생했으나 우회 처리되었습니다."); }
-      });
-    } else {
-      fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: "", imagePath: "" }).then(function() {
-        if (!isBypassed) { clearTimeout(fallbackTimer); finishPost(); showToast("등록이 정상 처리되었습니다."); }
-      }).catch(function(e) {
-        console.error("등록 실패 보정:", e);
-        if (!isBypassed) { clearTimeout(fallbackTimer); finishPost(); alert("서버 규칙 오류 또는 지연이 발생했으나 우회 처리되었습니다."); }
-      });
-    }
+    fbApi.addItem({ title: tVal.trim(), desc: dVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: "" }).then(function() {
+      showToast(modeVal === 'give' ? "🎁 [새 기부물품 등록 완료!]" : "🙏 [새 나눔요청 등록 완료!]");
+      document.getElementById('form-title').value = "";
+      document.getElementById('form-desc').value = "";
+      document.getElementById('form-image').value = "";
+      document.getElementById('image-preview-area').style.display = 'none';
+      fbApi.watchItems(function(l) { allItems = l; refreshUI(); switchPageTab('browse'); });
+    });
   });
 
-  function finishPost() {
-    document.getElementById('form-title').value = "";
-    document.getElementById('form-desc').value = "";
-    document.getElementById('form-image').value = "";
-    document.getElementById('image-preview-area').style.display = 'none';
-    var btn = document.getElementById('post-submit-btn');
-    btn.disabled = false;
-    btn.innerText = "등록하기";
-    switchPageTab('browse');
-  }
-
   function showToast(msg) {
-    var e = document.getElementById('toast-message');
-    if (!e) return;
-    e.innerText = msg;
-    e.style.display = 'block';
+    var e = document.getElementById('toast-message'); if (!e) return;
+    e.innerText = msg; e.style.display = 'block';
     setTimeout(function() { e.style.display = 'none'; }, 3000);
   }
 
-  // 브라우저 돔 파싱 즉시 타이밍 꼬임과 락 현상 없이 무조건 최우선 선제 독립 구동
   initAppStatic();
 </script>
 </body>

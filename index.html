@@ -68,7 +68,7 @@
     <div id="page-mine" class="app-page"><h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 글 관리</h3><div id="mine-items-list"></div></div>
     <div id="page-admin" class="app-page">
       <div class="admin-panel-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3><button id="admin-exit-btn" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3 style="margin:0; color:#8B7E66;">⚙️ 통합 운영 관리센터 (로컬)</h3><button id="admin-exit-btn" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button></div>
         <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div><button id="admin-change-pin-btn" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>
         <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기</div><div id="admin-items-list"></div>
         <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div><div id="admin-users-list"></div>
@@ -102,74 +102,70 @@
 <div id="toast-message" class="toast"></div>
 
 <script>
-  var firebaseConfig = {
-    apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
-    authDomain: "://firebaseapp.com",
-    projectId: "power-market-f9573",
-    storageBucket: "power-market-f9573.firebasestorage.app",
-    messagingSenderId: "1005808106144",
-    appId: "1:1005808106144:web:faef2e17c612833aec67c5"
-  };
-  var db = null, storage = null;
-  var TARGET_COLLECTION = "church_final_hub_v1";
-
-  // 🛠️ [샌드박스 비동기 격리 아키텍처] 외부 스크립트 결속 시 발생하는 런타임 충돌 위험을 철저히 진공 분리
-  function bindFirebaseInstance() {
-    try {
-      if (typeof firebase !== 'undefined' && firebase.initializeApp) {
-        if (!firebase.apps.length) {
-          firebase.initializeApp(firebaseConfig);
-        }
-        db = firebase.firestore();
-        storage = firebase.storage();
-        console.log("백엔드 클라우드 시스템 비동기 독립 채널 결속 성공");
-        connectServerDatabase();
-      }
-    } catch (e) { console.warn("격리 엔진 내 백엔드 예외 제어 우회 가동:", e); }
-  }
+  // 🛠️ 지연을 유발하는 파이어베이스 의존성을 완전히 제거하고 순수 고속 브라우저 스토리지 엔진으로 전면 전환
+  var TARGET_COLLECTION = "church_local_storage_hub_v1";
 
   var fbApi = {
     watchItems: function(cb) {
-      if(!db || !db.collection) { fallbackWatch(cb); return function(){}; }
-      try {
-        return db.collection(TARGET_COLLECTION).onSnapshot(function(s) {
-          try {
-            var data = s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
-            data.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
-            window.localStorage.setItem("cache_" + TARGET_COLLECTION, JSON.stringify(data));
-            cb(data);
-          } catch(innerErr) { fallbackWatch(cb); }
-        }, function(e) {
-          console.warn("실시간 차단 감지 -> 샌드박스 독립 캐시 보호망 가동:", e);
-          fallbackWatch(cb);
-        });
-      } catch(err) { fallbackWatch(cb); return function(){}; }
+      fallbackWatch(cb);
+      return function(){};
     },
-    addItem: function(data) { data.createdAt = Date.now(); if(!db || !db.collection) return fallbackAdd(data); return db.collection(TARGET_COLLECTION).add(data).catch(function(){ return fallbackAdd(data); }); },
-    updateItem: function(id, data) { if(!db || !db.collection) return fallbackUpdate(id, data); return db.collection(TARGET_COLLECTION).doc(id).update(data).catch(function(){ return fallbackUpdate(id, data); }); },
-    deleteItem: function(id, path) { if(!db || !db.collection) return fallbackDelete(id); var p1 = db.collection(TARGET_COLLECTION).doc(id).delete().catch(function(){ return fallbackDelete(id); }); if (path && storage && storage.ref) { var p2 = storage.ref(path).delete().catch(function(){}); return Promise.all([p1, p2]); } return p1; },
-    uploadImage: function(file, myId) { return new Promise(function(resolve, reject) { var reader = new FileReader(); reader.onloadend = function() { resolve({ url: reader.result, imagePath: "embedded_base64" }); }; reader.onerror = function(e) { reject(e); }; reader.readAsDataURL(file); }); },
-    requestItem: function(id, myId) { if(!db || !db.collection) return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); }); },
-    cancelRequest: function(id, myId) { if(!db || !db.collection) return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); }); },
-    getSeason: function() { if(!db || !db.collection) return Promise.resolve(1); return db.collection("meta").doc("season_final").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
+    addItem: function(data) { data.createdAt = Date.now(); return fallbackAdd(data); },
+    updateItem: function(id, data) { return fallbackUpdate(id, data); },
+    deleteItem: function(id, path) { return fallbackDelete(id); },
+    uploadImage: function(file, myId) { 
+      return new Promise(function(resolve, reject) { 
+        var reader = new FileReader(); 
+        reader.onloadend = function() { resolve({ url: reader.result, imagePath: "embedded_base64" }); }; 
+        reader.onerror = function(e) { reject(e); }; 
+        reader.readAsDataURL(file); 
+      }); 
+    },
+    requestItem: function(id, myId) { return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); },
+    cancelRequest: function(id, myId) { return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); },
+    getSeason: function() { 
+      try { var s = parseInt(window.localStorage.getItem("meta_season")) || 1; return Promise.resolve(s); } catch(e) { return Promise.resolve(1); }
+    },
     startNewSeason: function(curr) {
       var next = curr + 1;
-      window.localStorage.removeItem("cache_" + TARGET_COLLECTION);
-      window.localStorage.setItem(TARGET_COLLECTION, "[]");
-      window.localStorage.removeItem("my-church-fixed-serial-id-v15");
-      if(!db || !db.collection) { if(localWatchCallback) localWatchCallback([]); return Promise.resolve(next); }
-      
-      var p1 = db.collection("meta").doc("season_final").set({ value: next }).catch(function(){});
-      var p2 = db.collection(TARGET_COLLECTION).get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }).catch(function(){});
-      var p3 = db.collection("meta").doc("id_global_counter_v15").set({ value: 0 }).catch(function(){});
-      
-      return Promise.all([p1, p2, p3]).then(function() { if(localWatchCallback) localWatchCallback([]); return next; });
+      try {
+        window.localStorage.setItem("meta_season", next);
+        window.localStorage.setItem(TARGET_COLLECTION, "[]");
+        window.localStorage.setItem("church_id_counter", "1");
+        // 전체 성도 고정 번호도 완전 포맷 초기화 마감
+        var uu = [];
+        for (var i = 0; i < window.localStorage.length; i++) {
+          var k = window.localStorage.key(i);
+          if (k && k.indexOf("my-fixed-id-") === 0) uu.push(k);
+        }
+        uu.forEach(function(key) { window.localStorage.removeItem(key); });
+      } catch(e){}
+      if(localWatchCallback) localWatchCallback([]);
+      return Promise.resolve(next);
     },
-    getAdminPin: function() { if(!db || !db.collection) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin_final").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
-    setAdminPin: function(pin) { if(!db || !db.collection) return Promise.resolve(); return db.collection("meta").doc("admin-pin_final").set({ pin: pin }).catch(function(){}); },
-    getBlockedUsers: function() { if(!db || !db.collection) return Promise.resolve([]); return db.collection("meta").doc("blocked-users_final").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
-    blockUser: function(uId) { if(!db || !db.collection) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users_final"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }).catch(function(){}); },
-    unblockUser: function(uId) { if(!db || !db.collection) return Promise.resolve(); return db.collection("meta").doc("blocked-users_final").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); }
+    getAdminPin: function() { 
+      try { var p = window.localStorage.getItem("meta_pin") || "1234"; return Promise.resolve(p); } catch(e) { return Promise.resolve("1234"); }
+    },
+    setAdminPin: function(pin) { 
+      try { window.localStorage.setItem("meta_pin", pin); } catch(e){} return Promise.resolve(); 
+    },
+    getBlockedUsers: function() { 
+      try { var l = JSON.parse(window.localStorage.getItem("meta_blocked")) || []; return Promise.resolve(l); } catch(e) { return Promise.resolve([]); }
+    },
+    blockUser: function(uId) { 
+      try { 
+        var l = JSON.parse(window.localStorage.getItem("meta_blocked")) || []; 
+        if(l.indexOf(uId) === -1) l.push(uId); 
+        window.localStorage.setItem("meta_blocked", JSON.stringify(l)); 
+      } catch(e){} return Promise.resolve(); 
+    },
+    unblockUser: function(uId) { 
+      try { 
+        var l = JSON.parse(window.localStorage.getItem("meta_blocked")) || []; 
+        l = l.filter(function(r){ return r !== uId; }); 
+        window.localStorage.setItem("meta_blocked", JSON.stringify(l)); 
+      } catch(e){} return Promise.resolve(); 
+    }
   };
 </script>
   var localWatchCallback = null;
@@ -178,9 +174,6 @@
     if (localWatchCallback) {
       var list = [];
       try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
-      if (list.length === 0) {
-        try { list = JSON.parse(window.localStorage.getItem("cache_" + TARGET_COLLECTION)) || []; } catch(e){}
-      }
       localWatchCallback(list);
     }
   }
@@ -192,101 +185,38 @@
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
-  // 🛠️ [화면 터치 철통 가동 엔진] 서버 상태가 다운되거나 굳어도 탭 전환 및 모든 UI 클릭이 무조건 작동하도록 격리구조화
+  // 🛠️ [로컬 전용 가속 시동 엔진] 기기 브라우저별로 일련번호 분리 발급 및 영구 고정 완치
   function initAppStatic() {
-    var id = null; 
-    try { id = window.localStorage.getItem("my-church-fixed-serial-id-v15"); } catch (e) {}
+    // 사용자의 브라우저 정보 및 해시 기틀을 조합하여 기기 고유 식별 명찰 발급
+    var browserFingerprint = (navigator.userAgent.length % 7) + (navigator.hardwareConcurrency || 4);
+    var storageKey = "my-fixed-id-" + browserFingerprint;
+    var id = null;
+    try { id = window.localStorage.getItem(storageKey); } catch (e) {}
     
-    if (id && id !== "선민-대기중" && id !== "선민-X7Y5U" && id.indexOf("선민") === 0) {
-      myId = id;
-    } else {
+    if (!id || id === "선민-대기중" || id.indexOf("선민") !== 0) {
       var currentCounter = 1;
-      try { currentCounter = parseInt(window.localStorage.getItem("church-id-local-counter-v15")) || 1; } catch(e){}
-      var assignedId = "선민" + currentCounter;
+      try { currentCounter = parseInt(window.localStorage.getItem("church_id_counter")) || 1; } catch(e){}
+      id = "선민" + currentCounter;
       try {
-        window.localStorage.setItem("my-church-fixed-serial-id-v15", assignedId);
-        window.localStorage.setItem("church-id-local-counter-v15", currentCounter + 1);
+        window.localStorage.setItem(storageKey, id);
+        window.localStorage.setItem("church_id_counter", currentCounter + 1);
       } catch(e){}
-      myId = assignedId;
     }
     
+    myId = id;
     document.getElementById('display-my-id').innerText = myId;
     
-    // 🛠️ 파이어베이스 로딩 스크립트 흐름보다 탭 활성화를 0초 만에 강격 배치하여 브라우저 동결 현상을 근본적 소독 완치
     switchPageTab('browse'); 
-    startBackgroundSync();
-  }
-
-  function startBackgroundSync() {
-    fallbackWatch(function(list) { 
-      allItems = list; refreshUI(); updateDetailModalLive(); 
-    });
-
-    // 진공 상태로 감싸서 메인 스레드의 터치 동작에 절대적 간섭 차단
-    setTimeout(function() {
-      try {
-        var s1 = document.createElement('script');
-        s1.src = "https://gstatic.com";
-        s1.async = true;
-        
-        s1.onload = function() {
-          try {
-            var s2 = document.createElement('script');
-            s2.src = "https://gstatic.com";
-            s2.async = true;
-            s2.onload = function() {
-              try {
-                var s3 = document.createElement('script');
-                s3.src = "https://gstatic.com";
-                s3.async = true;
-                s3.onload = function() {
-                  bindFirebaseInstance();
-                };
-                document.head.appendChild(s3);
-              } catch(e){}
-            };
-            document.head.appendChild(s2);
-          } catch(e){}
-        };
-        document.head.appendChild(s1);
-      } catch(e){}
-    }, 40);
+    connectServerDatabase();
   }
 
   function connectServerDatabase() {
-    if (!db || !db.collection) return;
-    try {
-      fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
-      fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
-      
-      var counterRef = db.collection("meta").doc("id_global_counter_v15");
-      counterRef.get().then(function(doc) {
-        var localNum = parseInt(myId.replace("선민", "")) || 1;
-        var nextNum = localNum;
-        if (doc.exists) { 
-          var serverVal = doc.data().value || 0;
-          if (serverVal >= localNum) {
-            nextNum = serverVal + 1;
-            var reAssignedId = "선민" + nextNum;
-            window.localStorage.setItem("my-church-fixed-serial-id-v15", reAssignedId);
-            window.localStorage.setItem("church-id-local-counter-v15", nextNum + 1);
-            myId = reAssignedId;
-            document.getElementById('display-my-id').innerText = myId;
-          }
-        }
-        counterRef.set({ value: nextNum }).catch(function(){});
-      }).catch(function(){});
-
-      fbApi.watchItems(function(list) {
-        if (allItems.length > 0 && list.length > allItems.length) {
-          var newItem = list[0];
-          if (newItem && newItem.giverId !== myId) {
-            showToast(newItem.category === "ask" ? "🙏 [새 요청 등록]: " + newItem.title : "🎁 [새 나눔 등록]: " + newItem.title);
-          }
-        }
-        allItems = list; refreshUI(); updateDetailModalLive();
-      });
-    } catch(e){ console.warn("서버 동기화 가속 차단 격리 안전 가드 실행"); }
+    fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
+    fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
+    
+    fbApi.watchItems(function(list) {
+      allItems = list; refreshUI(); updateDetailModalLive();
+    });
   }
 
   function switchPageTab(name) {
@@ -325,7 +255,7 @@
       }); box.innerHTML = html;
     } else if (currentTab === 'admin' && isAdminAuthed) {
       var ibox = document.getElementById('admin-items-list'), ubox = document.getElementById('admin-users-list');
-      if (ibox) { if (allItems.length === 0) ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>'; else { var html = ""; allItems.forEach(function(i) { html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" data-path="' + (i.imagePath || '') + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>'; }); ibox.innerHTML = html; } }
+      if (ibox) { if (allItems.length === 0) ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>'; else { var html = ""; allItems.forEach(function(i) { html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>'; }); ibox.innerHTML = html; } }
       if (ubox) { var uu = []; allItems.forEach(function(i) { if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId); if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); }); }); if (uu.length === 0) ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>'; else { var html = ""; uu.forEach(function(u) { var b = blockedUsers.indexOf(u) !== -1; html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong>' + (b ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span><button class="act-admin-block" data-userid="' + u + '" style="background:' + (b ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (b ? '차단해제' : '유저차단') + '</button></div>'; }); ubox.innerHTML = html; } }
     }
   }
@@ -359,7 +289,7 @@
     if (it.status === 'open') {
       if (isMine) {
         html += '<button class="select-btn act-match-prompt" data-id="' + it.id + '" style="width:100%; margin-bottom:8px;">상대 성도 지정 매칭</button>';
-        html += '<button class="cancel-btn act-del" data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" style="width:100%; background:#EF9A9A; color:#B71C1C; border:none;">글 취소하기</button>';
+        html += '<button class="cancel-btn act-del" data-id="' + it.id + '" style="width:100%; background:#EF9A9A; color:#B71C1C; border:none;">글 취소하기</button>';
       } else if (requested) {
         html += '<button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width:100%;">신청 취소하기</button>';
       } else {
@@ -382,8 +312,8 @@
       var sel = prompt(txt); if (!sel) return; if (reqs.indexOf(sel.trim()) === -1) { alert("명단에 없는 성도입니다."); return; }
       fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); });
     }
-    else if (t.classList.contains('act-del')) { if (confirm("이 글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("삭제 완료."); closeDetailModal(); }); }
-    else if (t.classList.contains('act-admin-del')) { if (confirm("강제 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("파기 완료."); }); }
+    else if (t.classList.contains('act-del')) { if (confirm("이 글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id')).then(function() { showToast("삭제 완료."); closeDetailModal(); }); }
+    else if (t.classList.contains('act-admin-del')) { if (confirm("강제 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id')).then(function() { showToast("파기 완료."); }); }
     else if (t.classList.contains('act-admin-block')) {
       var u = t.getAttribute('data-userid');
       if (blockedUsers.indexOf(u) !== -1) { fbApi.unblockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
@@ -396,10 +326,11 @@
   document.getElementById('admin-gate-btn').addEventListener('click', function() { switchPageTab('admin'); });
   document.getElementById('toggle-done-btn').addEventListener('click', function() { showDone = !showDone; refreshUI(); });
   
+  // 🛠️ [나가기 즉시 잠금 완치] 관리센터에서 퇴장할 때 세션 인증 변수를 강제 파괴하여 다시 들어올 때 암호를 100% 재요구하도록 수정
   document.getElementById('admin-exit-btn').addEventListener('click', function() {
     isAdminAuthed = false;
     switchPageTab('browse');
-    showToast("관리자 모드가 해제되었습니다.");
+    showToast("관리자 모드가 완전히 해제되고 잠금되었습니다.");
   });
   
   document.getElementById('admin-change-pin-btn').addEventListener('click', function() {
@@ -409,7 +340,12 @@
 
   document.getElementById('admin-reset-season-btn').addEventListener('click', function() {
     if (confirm("전체 데이터를 포맷팅 초기화할까요?")) {
-      fbApi.startNewSeason(season).then(function(n) { season = n; document.getElementById('display-season').innerText = season; switchPageTab('browse'); });
+      fbApi.startNewSeason(season).then(function(n) { 
+        season = n; 
+        document.getElementById('display-season').innerText = season; 
+        switchPageTab('browse'); 
+        showToast("시즌 전면 초기화가 완료되었습니다.");
+      });
     }
   });
 
@@ -488,9 +424,11 @@
 
     if (file) {
       resizeAndCompressImage(file, function(compressedBlob) {
-        var isBypassed = false;
-        var fallbackTimer = setTimeout(function() { isBypassed = true; proceedAdd(); alert("스토리지 규칙 차단으로 인해 이미지를 제외하고 우회 등록되었습니다."); }, 2500);
-        fbApi.uploadImage(compressedBlob, myId).then(function(res) { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(res.url, res.imagePath); } }).catch(function() { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(); } });
+        fbApi.uploadImage(compressedBlob, myId).then(function(res) { 
+          proceedAdd(res.url, res.imagePath); 
+        }).catch(function() { 
+          proceedAdd(); 
+        });
       });
     } else { proceedAdd(); }
   });

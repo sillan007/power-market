@@ -1,8 +1,8 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (로컬 캐시 파쇄 · 실시간 크로스 기기 동기화 완전 완치판)
+  나눔의 자리 - 교회 나눔 웹앱 (서버 거부 락 완전 타파 · 관리센터 및 사진 연동 최종 완치판)
   
   사용 방법:
-  1부부터 9부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+  1부부터 10부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -15,7 +15,7 @@
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <link rel="preconnect" href="https://googleapis.com">
-<link href="https://googleapis.com/css2 family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #EDE7D6; }
@@ -28,10 +28,10 @@
   .header-bar { background: #8B7E66; color: white; padding: 24px 20px; text-align: center; }
   .header-title { margin: 0; font-size: 22px; font-family: 'Noto Serif KR', serif; }
   .header-info { font-size: 13px; opacity: 0.85; margin-top: 5px; }
-  
   .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
   .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
   .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
+  
   .content-area { padding: 20px 16px; }
   .app-page { display: none; }
   .app-page.active { display: block; }
@@ -476,6 +476,50 @@
       });
       mineContainer.innerHTML = html;
     }
+    else if (currentTab === 'admin' && isAdminAuthed) {
+      var adminItemsBox = document.getElementById('admin-items-list');
+      var adminUsersBox = document.getElementById('admin-users-list');
+      
+      if (adminItemsBox) {
+        if (allItems.length === 0) {
+          adminItemsBox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록된 게시물이 없습니다.</div>';
+        } else {
+          var html = "";
+          allItems.forEach(function(it) {
+            var mode = it.category === "ask" ? "요청" : "나눔";
+            html += '<div class="admin-list-item">';
+            html += '  <div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + mode + '] ' + it.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + it.giverId + ' · 상태: ' + it.status + '</span></div>';
+            html += '  <button class="act-admin-del" data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button>';
+            html += '</div>';
+          });
+          adminItemsBox.innerHTML = html;
+        }
+      }
+
+      if (adminUsersBox) {
+        var uniqueUsers = [];
+        allItems.forEach(function(it) {
+          if (uniqueUsers.indexOf(it.giverId) === -1) uniqueUsers.push(it.giverId);
+          if (it.requesters) {
+            it.requesters.forEach(function(r) { if (uniqueUsers.indexOf(r) === -1) uniqueUsers.push(r); });
+          }
+        });
+
+        if (uniqueUsers.length === 0) {
+          adminUsersBox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">조회된 유저 네트워크가 없습니다.</div>';
+        } else {
+          var html = "";
+          uniqueUsers.forEach(function(uId) {
+            var isBlocked = blockedUsers.indexOf(uId) !== -1;
+            html += '<div class="admin-list-item">';
+            html += '  <span>👤 <strong>' + uId + '</strong>' + (isBlocked ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span>';
+            html += '  <button class="act-admin-block" data-userid="' + uId + '" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (isBlocked ? '차단해제' : '유저차단') + '</button>';
+            html += '</div>';
+          });
+          adminUsersBox.innerHTML = html;
+        }
+      }
+    }
   }
 
   // 동적 생성 버튼들에 대한 글로벌 이벤트 가로채기 위임 유닛
@@ -643,6 +687,4 @@
   initAppStatic();
 </script>
 </body>
-</html>
-
 </html>

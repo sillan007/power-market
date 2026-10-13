@@ -1,8 +1,12 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (서버 무한 대기 버그 완전 파괴 최종 완치본)
-  
-  사용 방법:
-  1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+  나눔의 자리 - 교회 나눔 웹앱 (Firebase 연동 버전)
+
+  사용 방법
+  1) Firebase 콘솔(console.firebase.google.com)에서 새 프로젝트 생성 → Firestore Database 사용 설정
+  2) 프로젝트 설정 > 일반 > "내 앱" 에서 웹 앱 추가 후 나오는 firebaseConfig 값을
+     아래 <script type="module"> 안의 firebaseConfig 객체에 그대로 붙여넣기
+  3) 이 파일을 index.html 이름으로 GitHub 저장소에 업로드 → Settings > Pages 에서 배포
+  4) Firestore 규칙(Rules)은 아래 안내 참고 (대화 내 설명 참고)
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -10,95 +14,37 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<link rel="preconnect" href="https://googleapis.com">
-<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #EDE7D6; }
-  body { font-family: 'Noto Sans KR', -apple-system, sans-serif; color: #2A2823; }
-  button { font-family: inherit; cursor: pointer; border: none; transition: opacity 0.2s; }
-  button:active { opacity: 0.7; }
-  input, textarea { font-family: inherit; outline: none; }
-  
-  #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FAF6EE; box-shadow: 0 0 0 1px #ECE4D2; position: relative; padding-bottom: 80px; }
-  .header-bar { background: #8B7E66; color: white; padding: 24px 20px; text-align: center; }
-  .header-title { margin: 0; font-size: 22px; font-family: 'Noto Serif KR', serif; }
-  .header-info { font-size: 13px; opacity: 0.85; margin-top: 5px; }
-  
-  .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
-  .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
-  .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
-  
-  .content-area { padding: 20px 16px; }
-  .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; }
-  .card-top { margin-bottom: 6px; display: flex; align-items: center; }
-  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
-  .badge.open { background: #EAF0E3; color: #4C5C3E; }
-  .badge.matched { background: #F3E9C9; color: #7A6420; }
-  
-  .form-group { margin-bottom: 18px; }
-  .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
-  .form-input { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14.5px; }
-  .form-textarea { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14px; resize: none; line-height: 1.5; }
-  
-  .action-btn { width: 100%; padding: 13px; border-radius: 9px; background: #5C6E4B; color: #F6F2E8; font-size: 15px; font-weight: 700; text-align: center; }
-  .cancel-btn { background: #FAF6EE; color: #B34A4A; border: 1px solid #D8CFB8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
-  .select-btn { background: #5C6E4B; color: #F6F2E8; padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 600; }
-  
-  .admin-panel-box { margin: 0; padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
-  .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
-  .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
-  
-  .pwd-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-  .pwd-box { background: white; padding: 20px; border-radius: 10px; width: 300px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-  
-  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; z-index: 9999; display: none; }
+  body { font-family: 'Noto Sans KR', -apple-system, sans-serif; }
+  button { font-family: inherit; cursor: pointer; }
+  input, select, textarea { font-family: inherit; }
+  #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FAF6EE; box-shadow: 0 0 0 1px #ECE4D2; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
+<div id="root"></div>
 
-<div id="root">
-  <div class="header-bar">
-    <h1 class="header-title">나눔의 자리</h1>
-    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">로딩중...</span> · 시즌 <span id="display-season">1</span></div>
-  </div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <div class="tab-container">
-    <button class="tab-btn active" id="tab-browse-btn">둘러보기</button>
-    <button class="tab-btn" id="tab-share-btn">나눔하기</button>
-    <button class="tab-btn" id="tab-mine-btn">나의 나눔</button>
-  </div>
-
-  <div class="content-area" id="content-container"></div>
-</div>
-
-<div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
-  <div class="pwd-box">
-    <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
-    <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align: center; margin-bottom: 14px;" />
-    <div style="display: flex; gap: 8px;">
-      <button id="modal-submit-btn" class="select-btn" style="flex: 1; padding: 8px 0;">확인</button>
-      <button id="modal-close-btn" class="cancel-btn" style="flex: 1; padding: 8px 0; background: #EEE; color: #333; border: none;">취소</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast-message" class="toast"></div>
-<!-- 통합형 단일 모듈 시스템 스크립트 시작 -->
 <script type="module">
-  import { initializeApp } from "https://gstatic.com";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc,
-    onSnapshot, query, orderBy, getDocs, deleteDoc,
+    onSnapshot, query, orderBy, runTransaction, getDocs, deleteDoc,
     arrayUnion, arrayRemove,
-  } from "https://gstatic.com";
-  import {
-    getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject
-  } from "https://gstatic.com";
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+  // ⚠️ 아래 값을 본인의 Firebase 프로젝트 설정(firebaseConfig)으로 반드시 교체하세요.
   const firebaseConfig = {
     apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
-    authDomain: "://firebaseapp.com",
+    authDomain: "power-market-f9573.firebaseapp.com",
     projectId: "power-market-f9573",
     storageBucket: "power-market-f9573.firebasestorage.app",
     messagingSenderId: "1005808106144",
@@ -108,588 +54,732 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-  const storage = getStorage(app);
 
-  const fbApi = {
-    watchItems: function(cb) {
+  window.fb = {
+    watchItems(cb) {
       const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
-      return onSnapshot(q, function(snap) {
-        cb(snap.docs.map(function(d) {
-          const data = d.data();
-          return Object.assign({ id: d.id }, data);
-        }));
-      });
+      return onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
     },
-    addItem: function(data) {
-      data.createdAt = Date.now();
-      return addDoc(collection(db, "items"), data);
+    async addItem(data) {
+      await addDoc(collection(db, "items"), { ...data, createdAt: Date.now() });
     },
-    updateItem: function(id, data) {
-      return updateDoc(doc(db, "items", id), data);
+    async updateItem(id, data) {
+      await updateDoc(doc(db, "items", id), data);
     },
-    deleteItem: function(id, imagePath) {
-      const p1 = deleteDoc(doc(db, "items", id));
-      if (imagePath) {
-        const p2 = deleteObject(sRef(storage, imagePath)).catch(function(e) {
-          console.error("Storage 이미지 삭제 실패:", e);
-        });
-        return Promise.all([p1, p2]);
-      }
-      return p1;
+    async deleteItem(id) {
+      await deleteDoc(doc(db, "items", id));
     },
-    uploadImage: function(file, myId) {
-      const imagePath = 'items/' + Date.now() + '_' + myId;
-      const fileRef = sRef(storage, imagePath);
-      return uploadBytes(fileRef, file).then(function() {
-        return getDownloadURL(fileRef);
-      }).then(function(url) {
-        return { url: url, imagePath: imagePath };
-      });
+    async ensureUser(id, season) {
+      await setDoc(doc(db, "users", id), { id, season, lastSeen: Date.now() }, { merge: true });
     },
-    requestItem: function(id, myId) {
-      return updateDoc(doc(db, "items", id), { requesters: arrayUnion(myId) });
+    async getUserDoc(id) {
+      const snap = await getDoc(doc(db, "users", id));
+      return snap.exists() ? snap.data() : null;
     },
-    cancelRequest: function(id, myId) {
-      return updateDoc(doc(db, "items", id), { requesters: arrayRemove(myId) });
+    async listUsers() {
+      const snap = await getDocs(collection(db, "users"));
+      return snap.docs.map((d) => d.data());
     },
-    getSeason: function() {
+    async banUser(id) {
+      await updateDoc(doc(db, "users", id), { banned: true });
+    },
+    async requestItem(id, myId) {
+      await updateDoc(doc(db, "items", id), { requesters: arrayUnion(myId) });
+    },
+    async cancelRequest(id, myId) {
+      await updateDoc(doc(db, "items", id), { requesters: arrayRemove(myId) });
+    },
+    async getSeason() {
       const ref = doc(db, "meta", "season");
-      return getDoc(ref).then(function(snap) {
-        if (!snap.exists()) {
-          return setDoc(ref, { value: 1 }).then(function() { return 1; });
-        }
-        return snap.data().value || 1;
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        await setDoc(ref, { value: 1 });
+        return 1;
+      }
+      return snap.data().value || 1;
+    },
+    async nextId(season) {
+      const ref = doc(db, "meta", `counter-${season}`);
+      return runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const current = snap.exists() ? snap.data().value || 0 : 0;
+        const next = current + 1;
+        tx.set(ref, { value: next });
+        return next;
       });
     },
-    startNewSeason: function(currentSeason) {
+    async startNewSeason(currentSeason) {
       const nextSeason = currentSeason + 1;
-      const p1 = setDoc(doc(db, "meta", "season"), { value: nextSeason });
-      const p2 = getDocs(collection(db, "items")).then(function(snap) {
-        return Promise.all(snap.docs.map(function(d) { return deleteDoc(d.ref); }));
-      });
-      return Promise.all([p1, p2]).then(function() { return nextSeason; });
+      await setDoc(doc(db, "meta", "season"), { value: nextSeason });
+      const snap = await getDocs(collection(db, "items"));
+      await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+      return nextSeason;
     },
-    getAdminPin: function() {
-      const ref = doc(db, "meta", "admin-pin");
-      return getDoc(ref).then(function(snap) {
-        if (!snap.exists()) {
-          return setDoc(ref, { pin: "1234" }).then(function() { return "1234"; });
-        }
-        return snap.data().pin || "1234";
-      });
-    },
-    setAdminPin: function(newPin) {
-      return setDoc(doc(db, "meta", "admin-pin"), { pin: newPin });
-    },
-    getBlockedUsers: function() {
-      const ref = doc(db, "meta", "blocked-users");
-      return getDoc(ref).then(function(snap) {
-        if (!snap.exists()) return [];
-        return snap.data().list || [];
-      });
-    },
-    blockUser: function(userId) {
-      const ref = doc(db, "meta", "blocked-users");
-      return getDoc(ref).then(function(snap) {
-        if (!snap.exists()) {
-          return setDoc(ref, { list: [userId] });
-        } else {
-          return updateDoc(ref, { list: arrayUnion(userId) });
-        }
-      });
-    },
-    unblockUser: function(userId) {
-      const ref = doc(db, "meta", "blocked-users");
-      return updateDoc(ref, { list: arrayRemove(userId) });
-    }
   };
-  let myId = null;
-  let season = 1;
-  let currentTab = 'browse';
-  let allItems = [];
-  let showDone = false;
-  let isAdminAuthed = false;
-  let blockedUsers = [];
-  const ID_PREFIX = "선민";
+  window.__fbReady = true;
+</script>
 
-  let showPwdModal = false;
-  let pwdInput = "";
+<script type="text/babel">
+const { useEffect, useState, useCallback, useRef } = React;
 
-  function showToast(msg) {
-    const el = document.getElementById('toast-message');
-    if (!el) return;
-    el.innerText = msg;
-    el.style.display = 'block';
-    setTimeout(function() { el.style.display = 'none'; }, 2200);
-  }
+const CATEGORIES = [
+  { key: "living", label: "생활용품", emoji: "🪴" },
+  { key: "clothes", label: "의류", emoji: "🧥" },
+  { key: "books", label: "도서", emoji: "📚" },
+  { key: "kids", label: "유아/아동", emoji: "🧸" },
+  { key: "kitchen", label: "주방용품", emoji: "🍽️" },
+  { key: "electronics", label: "가전/전자", emoji: "🔌" },
+  { key: "etc", label: "기타", emoji: "🎁" },
+];
+const ID_PREFIX = "선민";
+const ADMIN_PIN = "ps0000!"; // 관리자 암호 - 실제 사용 전 꼭 바꿔주세요
 
-  // 🛠️ 서버 트랜잭션 락을 완벽히 우회하여 로딩중 멈춤을 100% 소멸시키는 초고속 다이렉트 식별 엔진
-  function initApp() {
-    renderCurrentTab();
+function emojiFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.emoji || "🎁"; }
+function labelFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.label || "기타"; }
+function fmtDate(d) {
+  if (!d) return "";
+  const dt = new Date(d + "T00:00:00");
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  return `${dt.getMonth() + 1}월 ${dt.getDate()}일 (${days[dt.getDay()]})`;
+}
+function tomorrowISO() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
+function todayISO() { return new Date().toISOString().slice(0, 10); }
 
-    fbApi.getBlockedUsers().then(function(list) {
-      blockedUsers = list;
-      renderCurrentTab();
-    });
+function waitForFb() {
+  return new Promise((resolve) => {
+    if (window.__fbReady) return resolve(window.fb);
+    const t = setInterval(() => {
+      if (window.__fbReady) { clearInterval(t); resolve(window.fb); }
+    }, 30);
+  });
+}
 
-    fbApi.getSeason().then(function(currentSeason) {
-      season = currentSeason;
-      const seasonEl = document.getElementById('display-season');
-      if (seasonEl) seasonEl.innerText = season;
-      
-      let id = null;
+function ChurchSharingApp() {
+  const [fbApi, setFbApi] = useState(null);
+  const [myId, setMyId] = useState(null);
+  const [season, setSeason] = useState(1);
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminAuthed, setAdminAuthed] = useState(false);
+  const [adminView, setAdminView] = useState("menu");
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
+  const [pin, setPin] = useState("");
+  const [blocked, setBlocked] = useState(false);
+  const [tab, setTab] = useState("browse");
+  const [showDone, setShowDone] = useState(false);
+  const [items, setItems] = useState([]);
+  const [ready, setReady] = useState(false);
+  const [toast, setToast] = useState("");
+  const [initError, setInitError] = useState("");
+  const toastTimer = useRef(null);
+
+  const [form, setForm] = useState({ title: "", desc: "", category: "living", type: "give" });
+  const [posting, setPosting] = useState(false);
+
+  const [openPanel, setOpenPanel] = useState({});
+  const [pickedReceiver, setPickedReceiver] = useState({});
+  const [pickedDate, setPickedDate] = useState({});
+
+  const showToast = (msg) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), 2200);
+  };
+
+  useEffect(() => {
+    let unsub = null;
+    (async () => {
       try {
-        id = window.localStorage.getItem("my-anon-id");
-      } catch (e) {}
+        const fb = await waitForFb();
+        setFbApi(fb);
 
-      // 만약 저장된 ID가 없거나 로딩중 잔재가 남아있다면 기기 고유 난수 조합으로 0.1초 만에 즉시 강제 발급
-      if (!id || id === "로딩중...") {
-        const randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
-        id = ID_PREFIX + "-" + randStr;
+        const currentSeason = await fb.getSeason();
+        let id = null;
         try {
-          window.localStorage.setItem("my-anon-id", id);
+          const raw = localStorage.getItem("my-anon-id");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.season === currentSeason) id = parsed.id;
+          }
         } catch (e) {}
-      }
-      
-      myId = id;
-      finishInit();
-    });
-  }
-
-  function finishInit() {
-    const idEl = document.getElementById('display-my-id');
-    if (idEl) idEl.innerText = myId;
-    
-    fbApi.watchItems(function(list) {
-      allItems = list;
-      renderCurrentTab();
-    });
-  }
-
-  // 모듈 통합 시스템으로 무조건 즉시 강제 가동
-  initApp();
-
-  function switchTab(tabName) {
-    if (tabName === 'admin' && !isAdminAuthed) {
-      pwdInput = "";
-      const inputArea = document.getElementById('modal-pwd-input');
-      if (inputArea) inputArea.value = "";
-      showPwdModal = true;
-      const modalEl = document.getElementById('admin-pwd-modal');
-      if (modalEl) modalEl.style.display = 'flex';
-      return;
-    }
-    currentTab = tabName;
-    updateTabActiveState(tabName);
-    renderCurrentTab();
-  }
-
-  function submitAdminPassword() {
-    const inputArea = document.getElementById('modal-pwd-input');
-    const inputPin = inputArea ? inputArea.value : "";
-    if (!inputPin) return;
-    
-    fbApi.getAdminPin().then(function(realPin) {
-      if (inputPin === realPin || inputPin === "1234") {
-        isAdminAuthed = true;
-        currentTab = 'admin';
-        showPwdModal = false;
-        const modalEl = document.getElementById('admin-pwd-modal');
-        if (modalEl) modalEl.style.display = 'none';
-        updateTabActiveState('admin');
-        renderCurrentTab();
-      } else {
-        alert("비밀번호가 틀렸습니다.");
-      }
-    });
-  }
-
-  function closeAdminModal() {
-    showPwdModal = false;
-    const modalEl = document.getElementById('admin-pwd-modal');
-    if (modalEl) modalEl.style.display = 'none';
-  }
-
-  function updateTabActiveState(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
-    const btnEl = document.getElementById('tab-' + tabName + '-btn');
-    if (btnEl) btnEl.classList.add('active');
-  }
-
-  // 모듈 범위 내부에서 동적 탭 스위칭 우회 안전망 결속
-  document.getElementById('tab-browse-btn').addEventListener('click', function() { switchTab('browse'); });
-  document.getElementById('tab-share-btn').addEventListener('click', function() { switchTab('share'); });
-  document.getElementById('tab-mine-btn').addEventListener('click', function() { switchTab('mine'); });
-  document.getElementById('modal-submit-btn').addEventListener('click', submitAdminPassword);
-  document.getElementById('modal-close-btn').addEventListener('click', closeAdminModal);
-  function handleAdminChangePin() {
-    const newPin = prompt("변경할 새로운 관리자 비밀번호를 입력하세요:");
-    if (!newPin || !newPin.trim()) return;
-    fbApi.setAdminPin(newPin.trim()).then(function() {
-      showToast("관리자 비밀번호가 변경되었습니다.");
-    });
-  }
-
-  function handleAdminToggleBlock(targetId) {
-    if (blockedUsers.indexOf(targetId) !== -1) {
-      fbApi.unblockUser(targetId).then(function() {
-        fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
-        showToast(targetId + " 차단이 해제되었습니다.");
-      });
-    } else {
-      if (confirm(targetId + " 사용자를 차단하시겠습니까?")) {
-        fbApi.blockUser(targetId).then(function() {
-          fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
-          showToast(targetId + " 사용자가 차단되었습니다.");
-        });
-      }
-    }
-  }
-
-  function handleAdminDeleteSeason(currSeason) {
-    if (confirm("정말 시즌을 초기화하고 모든 데이터를 삭제하시겠습니까?")) {
-      fbApi.startNewSeason(currSeason).then(function(nextS) {
-        season = nextS;
-        document.getElementById('display-season').innerText = season;
-        showToast("새로운 시즌 " + season + "이 시작되었습니다.");
-        switchTab('browse');
-      });
-    }
-  }
-
-  function handleAdminForceDelete(id, imagePath) {
-    if (confirm("관리자 권한으로 이 게시물을 영구 강제 삭제하시겠습니까? 부적절한 글과 실물 이미지까지 전면 폭파 파기됩니다.")) {
-      fbApi.deleteItem(id, imagePath).then(function() {
-        showToast("게시물이 강제 삭제되었습니다.");
-      });
-    }
-  }
-
-  function handleRequest(id) {
-    fbApi.requestItem(id, myId).then(function() { showToast("신청이 완료되었어요."); });
-  }
-
-  function handleCancelRequest(id) {
-    fbApi.cancelRequest(id, myId).then(function() { showToast("신청을 취소했어요."); });
-  }
-
-  function toggleShowDone() {
-    showDone = !showDone;
-    renderCurrentTab();
-  }
-
-  function renderCurrentTab() {
-    const container = document.getElementById('content-container');
-    if (!container) return;
-    
-    let html = "";
-
-    // 1. 둘러보기 탭 화면 전개 구역
-    if (currentTab === 'browse') {
-      if (blockedUsers.indexOf(myId) !== -1) {
-        container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 이용이 제한된 계정입니다.</div>';
-        return;
-      }
-
-      const filtered = showDone ? allItems : allItems.filter(function(it) {
-        return it.status !== 'matched' && it.status !== 'done';
-      });
-      
-      html += '<div style="display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px;">';
-      html += '  <button id="admin-gate-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>';
-      html += '  <button id="toggle-done-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">';
-      html += showDone ? "✓ 완료된 나눔 숨기기" : "👀 완료된 나눔도 보기";
-      html += '  </button>';
-      html += '</div>';
-
-      if (filtered.length === 0) {
-        html += '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 물품이 없습니다.</div>';
-      } else {
-        filtered.forEach(function(it) {
-          const isMine = it.giverId === myId;
-          const requested = it.requesters && it.requesters.indexOf(myId) !== -1;
-          
-          html += '<div class="item-card">';
-          html += '  <div class="card-top">';
-          html += '    <span class="badge ' + (it.status === 'open' ? 'open' : 'matched') + '">' + (it.status === 'open' ? '나눔중' : '매칭완료') + '</span>';
-          html += '    <strong style="font-size: 16px;">' + it.title + '</strong>';
-          html += '  </div>';
-          html += '  <p style="color: #666; font-size: 14px; margin: 8px 0; line-height: 1.4;">' + (it.desc || "상세 설명이 없습니다.") + '</p>';
-          
-          if (it.image) {
-            html += '  <div style="margin-top: 8px; margin-bottom: 8px;">';
-            html += '    <img src="' + it.image + '" style="width: 100%; max-height: 220px; border-radius: 8px; object-fit: cover; border: 1px solid #EFEAE2;" />';
-            html += '  </div>';
-          }
-
-          html += '  <div style="font-size: 12px; color: #999; margin-bottom: 8px;">기부자: ' + it.giverId + '</div>';
-          html += '  <div style="margin-top: 10px;">';
-          
-          if (it.status === 'open') {
-            if (isMine) {
-              html += '    <div style="font-size: 12px; color: #A39C8C;">내가 올린 나눔이에요</div>';
-            } else {
-              if (requested) {
-                html += '    <button data-id="' + it.id + '" class="item-cancel-req-btn cancel-btn" style="width: 100%;">신청 취소하기</button>';
-              } else {
-                const reqLen = (it.requesters && it.requesters.length) || 0;
-                html += '    <button data-id="' + it.id + '" class="item-req-btn select-btn" style="width: 100%;">받고 싶어요 (' + reqLen + '명)</button>';
-              }
-            }
-          } else {
-            html += '  <div style="background: #F5F5F5; padding: 8px; border-radius: 6px; font-size: 13px; color: #43A047; font-weight: bold;">';
-            html += '    🎉 ' + it.selectedReceiverId + ' 님과 매칭완료!';
-            html += '  </div>';
-          }
-          
-          html += '  </div>';
-          html += '</div>';
-        });
-      }
-    }
-    // 2. 나눔하기 등록 폼 전개 구역 (불필요한 카테고리 기입 인터페이스 완전 제거)
-    else if (currentTab === 'share') {
-      if (blockedUsers.indexOf(myId) !== -1) {
-        container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 나눔 등록이 불가능합니다.</div>';
-        return;
-      }
-
-      html += '<div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">';
-      html += '  <h3 style="margin-top: 0; color: #8B7E66;">나눔 물품 등록</h3>';
-      
-      html += '  <div class="form-group">';
-      html += '    <label class="form-label">물품 이름</label>';
-      html += '    <input type="text" id="form-title" placeholder="예: 아동용 도서 세트" class="form-input" />';
-      html += '  </div>';
-
-      /* 🛠️ 사진 파일 단 1장만 로드하고 실시간 단독 프리뷰 미리보기를 연결하는 첨부 슬롯 */
-      html += '  <div class="form-group">';
-      html += '    <label class="form-label">물품 사진 (최대 1장)</label>';
-      html += '    <input type="file" id="form-image" accept="image/*" class="form-input" />';
-      html += '    <div id="image-preview-area" style="margin-top: 10px; display: none;">';
-      html += '      <img id="form-preview-img" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #DCD3BC;" />';
-      html += '    </div>';
-      html += '  </div>';
-
-      html += '  <div class="form-group">';
-      html += '    <label class="form-label">설명 (상태, 사이즈 등)</label>';
-      html += '    <textarea id="form-desc" rows="3" placeholder="물건의 상태나 수령 방법을 적어주세요." class="form-textarea"></textarea>';
-      html += '  </div>';
-
-      html += '  <button id="post-submit-btn" class="action-btn" style="margin-top: 10px;">나눔 올리기</button>';
-      html += '</div>';
-    }
-
-    // 3. 나의 나눔 관리 대시보드 전개 구역
-    else if (currentTab === 'mine') {
-      var myItems = allItems.filter(function(i) { return i.giverId === myId; });
-      html += '<h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 나눔</h3>';
-      
-      if (myItems.length === 0) {
-        html += '<div style="text-align: center; padding: 30px 0; color: #999;">아직 등록한 나눔이 없습니다.</div>';
-      } else {
-        myItems.forEach(function(it) {
-          var reqCount = (it.requesters && it.requesters.length) || 0;
-          var iPath = it.imagePath || '';
-          
-          html += '<div class="item-card" style="border-left: 4px solid #8B7E66;">';
-          html += '  <strong style="font-size: 16px; display: block; margin-bottom: 4px;">' + it.title + '</strong>';
-          html += '  <div style="font-size: 13px; color: #666; margin-bottom: 8px;">신청자 수: ' + reqCount + '명</div>';
-          html += '  <div style="margin-top: 12px; display: flex; gap: 8px;">';
-          
-          if (it.status === 'open') {
-            html += '    <button onclick="handleSelectReceiverPrompt(\'' + it.id + '\')" class="select-btn" style="background: #4C5C3E;">나눔 매칭하기</button>';
-            html += '    <button data-id="' + it.id + '" data-path="' + iPath + '" class="mine-cancel-item-btn cancel-btn" style="background: #EF9A9A; color: #B71C1C; border: none;">';
-            html += '      나눔 취소하기';
-            html += '    </button>';
-          } else {
-            html += '    <div style="font-size: 13px; color: #43A047; font-weight: bold;">✓ ' + it.selectedReceiverId + ' 님과 매칭 수령 완료</div>';
-          }
-          
-          html += '  </div>';
-          html += '</div>';
-        });
-      }
-    }
-    // 4. 최고 권한 원격 운영 관리센터 대시보드 조립 전개 구역
-    else if (currentTab === 'admin') {
-      html += '<div class="admin-panel-box">';
-      html += '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">';
-      html += '    <h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3>';
-      html += '    <button id="admin-exit-btn" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button>';
-      html += '  </div>';
-      
-      html += '  <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>';
-      html += '  <button id="admin-change-pin-btn" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>';
-      
-      html += '  <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기 (' + allItems.length + '개)</div>';
-      if (allItems.length === 0) {
-        html += '  <div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록된 게시물이 존재하지 않습니다.</div>';
-      } else {
-        allItems.forEach(function(it) {
-          html += '  <div class="admin-list-item">';
-          html += '    <div style="min-width:0; flex:1; padding-right:8px;">';
-          html += '      <strong>' + it.title + '</strong>' + (it.image ? " 🖼️" : "") + '<br/>';
-          html += '      <span style="font-size:11px; color:#888;">작성자: ' + it.giverId + ' · 상태: ' + it.status + '</span>';
-          html += '    </div>';
-          html += '    <button data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" class="admin-force-delete-btn" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button>';
-          html += '  </div>';
-        });
-      }
-
-      html += '  <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div>';
-      var uniqueUsers = [];
-      allItems.forEach(function(it) {
-        if (uniqueUsers.indexOf(it.giverId) === -1) uniqueUsers.push(it.giverId);
-        if (it.requesters) {
-          it.requesters.forEach(function(r) {
-            if (uniqueUsers.indexOf(r) === -1) uniqueUsers.push(r);
-          });
+        if (!id) {
+          const n = await fb.nextId(currentSeason);
+          id = `${ID_PREFIX}${n}`;
+          localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
         }
-      });
 
-      if (uniqueUsers.length === 0) {
-        html += '  <div style="font-size:12px; color:#999; text-align:center; padding:10px;">조회된 유저 네트워크가 비어있습니다.</div>';
-      } else {
-        uniqueUsers.forEach(function(uId) {
-          var isBlocked = blockedUsers.indexOf(uId) !== -1;
-          html += '  <div class="admin-list-item">';
-          html += '    <span>👤 <strong>' + uId + '</strong>' + (isBlocked ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span>';
-          html += '    <button data-userid="' + uId + '" class="admin-toggle-block-btn" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">';
-          html += isBlocked ? '차단해제' : '유저차단';
-          html += '    </button>';
-          html += '  </div>';
-        });
+        await fb.ensureUser(id, currentSeason);
+        const userDoc = await fb.getUserDoc(id);
+
+        setMyId(id);
+        setSeason(currentSeason);
+
+        if (userDoc?.banned) {
+          setBlocked(true);
+          setReady(true);
+          return;
+        }
+
+        unsub = fb.watchItems((list) => setItems(list));
+        setReady(true);
+      } catch (err) {
+        console.error(err);
+        setInitError(err?.message || String(err));
+        setReady(true);
       }
+    })();
+    return () => { if (unsub) unsub(); };
+  }, []);
 
-      html += '  <div class="admin-sub-title">시즌 마감 및 전체 데이터 마스터 초기화</div>';
-      html += '  <button id="admin-reset-season-btn" style="background:#B34A4A; color:white; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:13.5px; margin-top:8px;">⚠️ 현재 시즌 종료 및 데이터 전면 초기화</button>';
-      html += '</div>';
-    }
-
-    container.innerHTML = html;
-
-    // 동적 렌더링 이후 생성된 버튼들에 이벤트 리스너를 바인딩 처리
-    bindDynamicEvents();
-  }
-
-  // 🛠️ 수동으로 나눔 수령자를 선정하고 상태를 매칭완료로 업데이트하는 액션 함수
-  window.handleSelectReceiverPrompt = function(itemId) {
-    const targetItem = allItems.find(function(i) { return i.id === itemId; });
-    if (!targetItem) return;
-    
-    const reqs = targetItem.requesters || [];
-    if (reqs.length === 0) {
-      alert("아직 이 물품을 받고 싶다고 신청한 사람이 없습니다.");
-      return;
-    }
-    
-    let msg = "이 물품을 나눔할 수령자의 ID를 정확히 입력하세요:\n\n[신청자 명단]\n";
-    reqs.forEach(function(rId) { msg += "- " + rId + "\n"; });
-    
-    const selected = prompt(msg);
-    if (!selected) return;
-    
-    if (reqs.indexOf(selected.trim()) === -1) {
-      alert("신청자 명단에 없는 ID입니다. 정확하게 다시 기입하세요.");
-      return;
-    }
-    
-    fbApi.updateItem(itemId, {
-      selectedReceiverId: selected.trim(),
-      status: "matched"
-    }).then(function() {
-      showToast(selected.trim() + " 님과 매칭이 완료되었습니다!");
-    });
+  const submitItem = async () => {
+    if (!form.title.trim()) { showToast("나눔할 물건 이름을 적어주세요."); return; }
+    setPosting(true);
+    try {
+      await fbApi.addItem({
+        title: form.title.trim(), desc: form.desc.trim(), category: form.category, type: form.type,
+        giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
+      });
+      setForm({ title: "", desc: "", category: "living", type: "give" });
+      setTab("mine");
+      showToast("나눔이 등록되었어요.");
+    } catch (e) { showToast("등록 중 문제가 발생했어요."); }
+    setPosting(false);
   };
 
-  // 대시보드가 새로 그려질 때마다 상단 온클릭 간섭 없이 동작 함수를 가로채 실행하는 모듈식 결속 장치
-  function bindDynamicEvents() {
-    const adminGateBtn = document.getElementById('admin-gate-btn');
-    if (adminGateBtn) adminGateBtn.addEventListener('click', function() { switchTab('admin'); });
+  const requestItem = async (itemId) => { await fbApi.requestItem(itemId, myId); showToast("받고 싶다는 의사를 전달했어요."); };
+  const cancelRequest = async (itemId) => { await fbApi.cancelRequest(itemId, myId); showToast("신청을 취소했어요."); };
 
-    const toggleDoneBtn = document.getElementById('toggle-done-btn');
-    if (toggleDoneBtn) toggleDoneBtn.addEventListener('click', toggleShowDone);
+  const togglePanel = (itemId) => {
+    setOpenPanel((p) => ({ ...p, [itemId]: !p[itemId] }));
+    setPickedReceiver((p) => ({ ...p, [itemId]: p[itemId] || "" }));
+    setPickedDate((p) => ({ ...p, [itemId]: p[itemId] || "" }));
+  };
 
-    document.querySelectorAll('.item-req-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { handleRequest(this.getAttribute('data-id')); });
-    });
+  const confirmMatch = async (itemId) => {
+    const receiver = pickedReceiver[itemId];
+    const date = pickedDate[itemId];
+    if (!receiver) { showToast("받을 분을 선택해주세요."); return; }
+    if (!date) { showToast("전달할 날짜를 선택해주세요."); return; }
+    await fbApi.updateItem(itemId, { selectedReceiverId: receiver, dropOffDate: date, status: "matched" });
+    setOpenPanel((p) => ({ ...p, [itemId]: false }));
+    showToast("나눔이 확정되었어요.");
+  };
+  const undoMatch = async (itemId) => {
+    await fbApi.updateItem(itemId, { selectedReceiverId: null, dropOffDate: null, status: "open" });
+    showToast("선택을 취소했어요.");
+  };
+  const markDone = async (itemId) => { await fbApi.updateItem(itemId, { status: "done" }); showToast("전달이 완료되었어요."); };
+  const deleteItem = async (itemId) => {
+    if (!window.confirm("이 나눔을 취소하고 삭제할까요? 되돌릴 수 없어요.")) return;
+    await fbApi.deleteItem(itemId);
+    showToast("나눔을 취소했어요.");
+  };
 
-    document.querySelectorAll('.item-cancel-req-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { handleCancelRequest(this.getAttribute('data-id')); });
-    });
+  const startNewSeason = async () => {
+    const next = await fbApi.startNewSeason(season);
+    setSeason(next);
+    setAdminOpen(false);
+    setAdminAuthed(false);
+    setAdminView("menu");
+    setPin("");
+    showToast("새 시즌이 시작됐어요. 모두 다음 접속부터 새 번호를 받아요.");
+  };
 
-    const fileInput = document.getElementById('form-image');
-    if (fileInput) {
-      fileInput.addEventListener('change', function() {
-        if (this.files && this.files[0]) {
-          const area = document.getElementById('image-preview-area');
-          const img = document.getElementById('form-preview-img');
-          if (area && img) {
-            area.style.display = 'block';
-            img.src = URL.createObjectURL(this.files[0]);
-          }
-        }
-      });
-    }
+  const openAdminUsers = async () => {
+    setAdminView("users");
+    setAdminUsersLoading(true);
+    const list = await fbApi.listUsers();
+    const numOf = (s) => parseInt(String(s.id || "").replace(/\D/g, ""), 10) || 0;
+    setAdminUsers(list.filter((u) => u.season === season && !u.banned).sort((a, b) => numOf(a) - numOf(b)));
+    setAdminUsersLoading(false);
+  };
 
-    const postSubmitBtn = document.getElementById('post-submit-btn');
-    if (postSubmitBtn) {
-      postSubmitBtn.addEventListener('click', function() {
-        const titleVal = document.getElementById('form-title').value;
-        const descVal = document.getElementById('form-desc').value;
-        const fileIn = document.getElementById('form-image');
-        const file = fileIn && fileIn.files && fileIn.files[0];
+  const banUser = async (id) => {
+    if (!window.confirm(`${id}님의 이용을 제한할까요?`)) return;
+    await fbApi.banUser(id);
+    setAdminUsers((list) => list.filter((u) => u.id !== id));
+    showToast(`${id}님의 이용이 제한되었어요.`);
+  };
 
-        if (!titleVal.trim()) { alert("물품 이름을 입력하세요."); return; }
-        this.disabled = true;
-        this.innerText = "🚀 사진 및 나눔 물품 등록 중...";
+  const adminDeleteItem = async (itemId) => {
+    if (!window.confirm("이 게시글을 삭제할까요? 되돌릴 수 없어요.")) return;
+    await fbApi.deleteItem(itemId);
+    showToast("게시글을 삭제했어요.");
+  };
 
-        if (file) {
-          fbApi.uploadImage(file, myId).then(function(res) {
-            fbApi.addItem({
-              title: titleVal.trim(), desc: descVal.trim(), category: "etc",
-              giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
-              image: res.url, imagePath: res.imagePath
-            }).then(function() { showToast("나눔 물품이 등록되었어요."); switchTab('browse'); });
-          });
-        } else {
-          fbApi.addItem({
-            title: titleVal.trim(), desc: descVal.trim(), category: "etc",
-            giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
-            image: "", imagePath: ""
-          }).then(function() { showToast("나눔 물품이 등록되었어요."); switchTab('browse'); });
-        }
-      });
-    }
-
-    document.querySelectorAll('.mine-cancel-item-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
-          fbApi.deleteItem(this.getAttribute('data-id'), this.getAttribute('data-path')).then(function() {
-            showToast("나눔 등록을 취소했습니다.");
-          });
-        }
-      });
-    });
-
-    const adminExitBtn = document.getElementById('admin-exit-btn');
-    if (adminExitBtn) adminExitBtn.addEventListener('click', function() { switchTab('browse'); });
-
-    const adminChangePinBtn = document.getElementById('admin-change-pin-btn');
-    if (adminChangePinBtn) adminChangePinBtn.addEventListener('click', handleAdminChangePin);
-
-    const adminResetSeasonBtn = document.getElementById('admin-reset-season-btn');
-    if (adminResetSeasonBtn) adminResetSeasonBtn.addEventListener('click', function() { handleAdminDeleteSeason(season); });
-
-    document.querySelectorAll('.admin-force-delete-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { handleAdminForceDelete(this.getAttribute('data-id'), this.getAttribute('data-path')); });
-    });
-
-    document.querySelectorAll('.admin-toggle-block-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { handleAdminToggleBlock(this.getAttribute('data-userid')); });
-    });
+  if (!ready) {
+    return (
+      <Shell>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, gap: 12, color: "#8b8577" }}>
+          <span style={{ fontSize: 26 }}>🎁</span>
+          <div style={{ fontSize: 14 }}>자리를 준비하고 있어요…</div>
+        </div>
+      </Shell>
+    );
   }
+
+  if (initError) {
+    return (
+      <Shell>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 360, gap: 10, color: "#8b8577", padding: 30, textAlign: "center" }}>
+          <span style={{ fontSize: 26 }}>⚠️</span>
+          <div style={{ fontSize: 14, color: "#6B6455" }}>불러오는 중 문제가 생겼어요.</div>
+          <div style={{ fontSize: 12, color: "#A39C8C", wordBreak: "break-all" }}>{initError}</div>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (blocked) {
+    return (
+      <Shell>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 360, gap: 10, color: "#8b8577", padding: 30, textAlign: "center" }}>
+          <span style={{ fontSize: 26 }}>🙏</span>
+          <div style={{ fontSize: 14.5, color: "#6B6455", lineHeight: 1.6 }}>
+            관리자에 의해 이용이 제한되었어요.<br />문의사항은 교회 행정실로 연락해주세요.
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  const openItems = items.filter((it) => it.status === "open");
+  const matchedItems = items.filter((it) => it.status === "matched");
+  const doneItems = items.filter((it) => it.status === "done");
+  const browseItems = [...openItems, ...matchedItems, ...(showDone ? doneItems : [])].sort((a, b) => b.createdAt - a.createdAt);
+  const myItems = items.filter((it) => it.giverId === myId).sort((a, b) => b.createdAt - a.createdAt);
+  const requestedItems = items.filter((it) => it.requesters?.includes(myId)).sort((a, b) => b.createdAt - a.createdAt);
+
+  return (
+    <Shell>
+      <Header myId={myId} />
+      <TabBar tab={tab} setTab={setTab} counts={{ requested: requestedItems.length, mine: myItems.length }} />
+      <div style={{ padding: "18px 18px 40px" }}>
+        {tab === "browse" && (
+          <>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+              <button onClick={() => setShowDone((v) => !v)}
+                style={{ fontSize: 12, padding: "6px 11px", borderRadius: 20, border: "1px solid #DCD3BC", background: showDone ? "#EFE9D8" : "#FDFBF5", color: "#6B6455", fontWeight: 600 }}>
+                {showDone ? "완료 나눔 숨기기" : "완료 나눔 보기"}{doneItems.length ? ` (${doneItems.length})` : ""}
+              </button>
+            </div>
+            <BrowseList items={browseItems} myId={myId} onRequest={requestItem} onCancel={cancelRequest} />
+          </>
+        )}
+        {tab === "create" && <CreateForm form={form} setForm={setForm} onSubmit={submitItem} posting={posting} />}
+        {tab === "mine" && (
+          <MineList items={myItems} openPanel={openPanel} togglePanel={togglePanel}
+            pickedReceiver={pickedReceiver} setPickedReceiver={setPickedReceiver}
+            pickedDate={pickedDate} setPickedDate={setPickedDate}
+            onConfirm={confirmMatch} onUndo={undoMatch} onDone={markDone} onDelete={deleteItem} />
+        )}
+        {tab === "requested" && <RequestedList items={requestedItems} myId={myId} onCancel={cancelRequest} />}
+      </div>
+
+      <div style={{ textAlign: "center", padding: "4px 0 24px" }}>
+        <button onClick={() => setAdminOpen(true)} style={{ background: "none", border: "none", color: "#C9C2AE", fontSize: 11 }}>관리자</button>
+      </div>
+
+      {adminOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(42,40,35,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }}>
+          <div style={{ background: "#FDFBF5", borderRadius: 12, padding: 22, width: "100%", maxWidth: 340, maxHeight: "80vh", overflowY: "auto" }}>
+
+            {!adminAuthed && (
+              <>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>관리자 확인</div>
+                <input type="password" placeholder="관리자 암호" value={pin} onChange={(e) => setPin(e.target.value)}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1px solid #DCD3BC", marginBottom: 14, fontSize: 14 }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => { if (pin !== ADMIN_PIN) { showToast("암호가 올바르지 않아요."); return; } setAdminAuthed(true); setPin(""); }}
+                    style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 700, fontSize: 13.5 }}>
+                    확인
+                  </button>
+                  <button onClick={() => { setAdminOpen(false); setPin(""); }}
+                    style={{ padding: "10px 14px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>
+                    취소
+                  </button>
+                </div>
+              </>
+            )}
+
+            {adminAuthed && adminView === "menu" && (
+              <>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>관리자 메뉴</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                  <button onClick={() => setAdminView("posts")} style={{ padding: "12px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", textAlign: "left", fontSize: 13.5, fontWeight: 600, color: "#4A4638" }}>
+                    📋 게시글 관리
+                  </button>
+                  <button onClick={openAdminUsers} style={{ padding: "12px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", textAlign: "left", fontSize: 13.5, fontWeight: 600, color: "#4A4638" }}>
+                    👤 사용자 관리
+                  </button>
+                  <button onClick={() => setAdminView("season")} style={{ padding: "12px", borderRadius: 8, border: "1px solid #E3C9BE", background: "#FDFBF5", textAlign: "left", fontSize: 13.5, fontWeight: 600, color: "#B5432F" }}>
+                    🔄 새 시즌 시작 (전체 초기화)
+                  </button>
+                </div>
+                <button onClick={() => { setAdminOpen(false); setAdminAuthed(false); }}
+                  style={{ width: "100%", padding: "10px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>
+                  닫기
+                </button>
+              </>
+            )}
+
+            {adminAuthed && adminView === "season" && (
+              <>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>새 시즌 시작하기</div>
+                <div style={{ fontSize: 12.5, color: "#8B8577", marginBottom: 14, lineHeight: 1.55 }}>
+                  현재 등록된 나눔이 모두 지워지고, 다음 접속부터 모든 분들이 {ID_PREFIX}1 부터 새 번호를 받아요. 차단했던 사용자도 함께 초기화돼요. 되돌릴 수 없어요.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={startNewSeason} style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#B5432F", color: "#FDFBF5", fontWeight: 700, fontSize: 13.5 }}>
+                    초기화 진행
+                  </button>
+                  <button onClick={() => setAdminView("menu")} style={{ padding: "10px 14px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>
+                    뒤로
+                  </button>
+                </div>
+              </>
+            )}
+
+            {adminAuthed && adminView === "posts" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>게시글 관리 ({items.length})</div>
+                  <button onClick={() => setAdminView("menu")} style={{ fontSize: 12.5, color: "#8B8577", background: "none", border: "none" }}>뒤로</button>
+                </div>
+                {items.length === 0 && <div style={{ fontSize: 13, color: "#A39C8C", padding: "20px 0" }}>게시글이 없어요.</div>}
+                {items.map((it) => (
+                  <div key={it.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "9px 0", borderBottom: "1px solid #ECE4D2" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
+                      <div style={{ fontSize: 11, color: "#A39C8C" }}>{it.type === "want" ? "요청" : "나눔"} · {it.giverId} · {it.status === "open" ? "진행중" : it.status === "matched" ? "전달예정" : "완료"}</div>
+                    </div>
+                    <button onClick={() => adminDeleteItem(it.id)} style={{ fontSize: 11.5, padding: "5px 9px", borderRadius: 6, border: "1px solid #E3C9BE", background: "none", color: "#B5432F", flexShrink: 0 }}>
+                      삭제
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {adminAuthed && adminView === "users" && (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>사용자 관리 ({adminUsers.length})</div>
+                  <button onClick={() => setAdminView("menu")} style={{ fontSize: 12.5, color: "#8B8577", background: "none", border: "none" }}>뒤로</button>
+                </div>
+                {adminUsersLoading && <div style={{ fontSize: 13, color: "#A39C8C", padding: "20px 0" }}>불러오는 중…</div>}
+                {!adminUsersLoading && adminUsers.length === 0 && <div style={{ fontSize: 13, color: "#A39C8C", padding: "20px 0" }}>등록된 사용자가 없어요.</div>}
+                {!adminUsersLoading && adminUsers.map((u) => (
+                  <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: "1px solid #ECE4D2" }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{u.id}</span>
+                    <button onClick={() => banUser(u.id)} style={{ fontSize: 11.5, padding: "5px 9px", borderRadius: 6, border: "1px solid #E3C9BE", background: "none", color: "#B5432F" }}>
+                      이용 제한
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div style={{ position: "fixed", left: "50%", bottom: 22, transform: "translateX(-50%)", background: "#2E3A26", color: "#F6F2E8", padding: "10px 18px", borderRadius: 8, fontSize: 13.5, boxShadow: "0 6px 20px rgba(0,0,0,0.18)", zIndex: 50, maxWidth: "88%", textAlign: "center" }}>
+          {toast}
+        </div>
+      )}
+    </Shell>
+  );
+}
+
+function Shell({ children }) {
+  return <div style={{ fontFamily: "'Noto Sans KR', -apple-system, sans-serif", background: "#FAF6EE", color: "#2A2823", minHeight: "100%" }}>{children}</div>;
+}
+
+function Header({ myId }) {
+  return (
+    <div style={{ padding: "22px 18px 16px", borderBottom: "1px solid #ECE4D2", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#5C6E4B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>🎁</div>
+        <div>
+          <div style={{ fontFamily: "'Noto Serif KR', serif", fontSize: 18, fontWeight: 700, lineHeight: 1.1 }}>나눔의 자리</div>
+          <div style={{ fontSize: 11.5, color: "#9C9583", marginTop: 2 }}>이름 없이, 마음만 전해요</div>
+        </div>
+      </div>
+      <span style={{ fontSize: 12.5, background: "#EFE9D8", color: "#5C6E4B", padding: "5px 10px", borderRadius: 20, fontWeight: 600 }}>{myId}</span>
+    </div>
+  );
+}
+
+function TabBar({ tab, setTab, counts }) {
+  const tabs = [
+    { key: "browse", label: "둘러보기" },
+    { key: "create", label: "나눔하기" },
+    { key: "mine", label: `내 나눔${counts.mine ? ` ${counts.mine}` : ""}` },
+    { key: "requested", label: `내 신청${counts.requested ? ` ${counts.requested}` : ""}` },
+  ];
+  return (
+    <div style={{ display: "flex", borderBottom: "1px solid #ECE4D2", background: "#FDFBF5" }}>
+      {tabs.map((t) => (
+        <button key={t.key} onClick={() => setTab(t.key)}
+          style={{ flex: 1, padding: "12px 4px", background: "none", border: "none", borderBottom: tab === t.key ? "2px solid #5C6E4B" : "2px solid transparent", color: tab === t.key ? "#2A2823" : "#A39C8C", fontWeight: tab === t.key ? 600 : 500, fontSize: 13.5 }}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ icon, text, sub }) {
+  return (
+    <div style={{ textAlign: "center", padding: "56px 20px", color: "#A39C8C" }}>
+      <div style={{ marginBottom: 10, fontSize: 26 }}>{icon}</div>
+      <div style={{ fontSize: 14, color: "#7C7566", marginBottom: 4 }}>{text}</div>
+      {sub && <div style={{ fontSize: 12.5 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function TypeTag({ type }) {
+  const isWant = type === "want";
+  return (
+    <span style={{ fontSize: 11, fontWeight: 600, background: isWant ? "#F3E9C9" : "#E7EFE0", color: isWant ? "#7A6420" : "#4C5C3E", padding: "3px 8px", borderRadius: 5, whiteSpace: "nowrap" }}>
+      {isWant ? "요청" : "나눔"}
+    </span>
+  );
+}
+
+function StatusTag({ status }) {
+  const map = {
+    open: { label: "나눔중", bg: "#EAF0E3", fg: "#4C5C3E" },
+    matched: { label: "나눔 예정", bg: "#F3E9C9", fg: "#7A6420" },
+    done: { label: "나눔 완료", bg: "#EFEAE0", fg: "#8B8577" },
+  };
+  const s = map[status] || map.open;
+  return <span style={{ fontSize: 11, fontWeight: 600, background: s.bg, color: s.fg, padding: "3px 8px", borderRadius: 5, whiteSpace: "nowrap" }}>{s.label}</span>;
+}
+
+function BrowseList({ items, myId, onRequest, onCancel }) {
+  if (items.length === 0) return <EmptyState icon="📦" text="아직 올라온 나눔이 없어요." sub="첫 나눔을 시작해보세요." />;
+  return (
+    <div>
+      {items.map((it) => {
+        const isMine = it.giverId === myId;
+        const requested = it.requesters?.includes(myId);
+        return (
+          <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2", opacity: it.status === "done" ? 0.55 : 1 }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 10, background: "#F1ECDD", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                {emojiFor(it.category)}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
+                  <TypeTag type={it.type} />
+                  <StatusTag status={it.status} />
+                </div>
+                {it.desc && <div style={{ fontSize: 13, color: "#77715F", marginBottom: 6, lineHeight: 1.4 }}>{it.desc}</div>}
+                <div style={{ fontSize: 11.5, color: "#A39C8C", marginBottom: 8 }}>
+                  {labelFor(it.category)} · {it.status === "open" ? `${it.type === "want" ? "제안" : "신청"} ${it.requesters?.length || 0}명` : it.status === "matched" ? `${fmtDate(it.dropOffDate)} 전달 예정` : "전달 완료"}
+                </div>
+                {!isMine && it.status === "open" && (
+                  requested ? (
+                    <button onClick={() => onCancel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "1px solid #D8CFB8", background: "#F6F2E8", color: "#6B6455", fontWeight: 600 }}>
+                      {it.type === "want" ? "제안 취소하기" : "신청 취소하기"}
+                    </button>
+                  ) : (
+                    <button onClick={() => onRequest(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: it.type === "want" ? "#8A6F3E" : "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>
+                      {it.type === "want" ? "제가 나눔할게요" : "받고 싶어요"}
+                    </button>
+                  )
+                )}
+                {isMine && <div style={{ fontSize: 12, color: "#A39C8C" }}>{it.type === "want" ? "내가 올린 요청이에요" : "내가 올린 나눔이에요"}</div>}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CreateForm({ form, setForm, onSubmit, posting }) {
+  const isWant = form.type === "want";
+  return (
+    <div>
+      <div style={{ marginBottom: 18 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 9 }}>어떤 게시물인가요?</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setForm((f) => ({ ...f, type: "give" }))}
+            style={{ flex: 1, padding: "10px", borderRadius: 8, border: !isWant ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: !isWant ? "#EAF0E3" : "#FDFBF5", color: !isWant ? "#4C5C3E" : "#6B6455", fontWeight: 700, fontSize: 13.5 }}>
+            🎁 나눔할래요
+          </button>
+          <button onClick={() => setForm((f) => ({ ...f, type: "want" }))}
+            style={{ flex: 1, padding: "10px", borderRadius: 8, border: isWant ? "1.5px solid #8A6F3E" : "1px solid #DCD3BC", background: isWant ? "#F3E9C9" : "#FDFBF5", color: isWant ? "#7A6420" : "#6B6455", fontWeight: 700, fontSize: 13.5 }}>
+            🙏 받고 싶어요
+          </button>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 18 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>
+          {isWant ? "어떤 물건을 찾으세요?" : "무엇을 나누시겠어요?"}
+        </label>
+        <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+          placeholder={isWant ? "예: 아이 책상 의자 구합니다" : "예: 아이 겨울 외투 (110cm)"}
+          style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14.5 }} />
+      </div>
+      <div style={{ marginBottom: 18 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 7 }}>간단한 설명 (선택)</label>
+        <textarea value={form.desc} onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))} placeholder="상태, 크기, 참고사항 등을 적어주세요" rows={3}
+          style={{ width: "100%", padding: "11px 13px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 14, resize: "none", lineHeight: 1.5 }} />
+      </div>
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: "#5C5745", display: "block", marginBottom: 9 }}>분류</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {CATEGORIES.map((c) => (
+            <button key={c.key} onClick={() => setForm((f) => ({ ...f, category: c.key }))}
+              style={{ padding: "8px 12px", borderRadius: 20, border: form.category === c.key ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: form.category === c.key ? "#EAF0E3" : "#FDFBF5", color: form.category === c.key ? "#4C5C3E" : "#6B6455", fontSize: 13, fontWeight: 600 }}>
+              {c.emoji} {c.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <button onClick={onSubmit} disabled={posting}
+        style={{ width: "100%", padding: "13px", borderRadius: 9, border: "none", background: isWant ? "#8A6F3E" : "#5C6E4B", color: "#F6F2E8", fontSize: 15, fontWeight: 700, opacity: posting ? 0.6 : 1 }}>
+        {isWant ? "🙏 요청 올리기" : "➕ 나눔 올리기"}
+      </button>
+      <div style={{ fontSize: 12, color: "#A39C8C", marginTop: 10, lineHeight: 1.5 }}>
+        {isWant ? "누군가 나눠주실 수 있으면 " : "올린 나눔은 누가 신청했는지 나에게만 보이고, "}이름 없이 {ID_PREFIX} 번호로만 표시돼요.
+      </div>
+    </div>
+  );
+}
+
+function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedReceiver, pickedDate, setPickedDate, onConfirm, onUndo, onDone, onDelete }) {
+  if (items.length === 0) return <EmptyState icon="🎁" text="아직 올린 나눔이 없어요." sub="나눔하기 탭에서 첫 나눔을 올려보세요." />;
+  return (
+    <div>
+      {items.map((it) => (
+        <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
+              <TypeTag type={it.type} />
+              <StatusTag status={it.status} />
+            </div>
+            {it.status !== "done" && (
+              <button onClick={() => onDelete(it.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: "1px solid #E3C9BE", background: "none", color: "#B5432F" }}>
+                {it.type === "want" ? "요청취소" : "나눔취소"}
+              </button>
+            )}
+          </div>
+          {it.status === "open" && (
+            <>
+              <div style={{ fontSize: 12.5, color: "#77715F", marginBottom: 10 }}>
+                {it.requesters?.length ? `${it.requesters.length}명이 ${it.type === "want" ? "나눔하겠다고 했어요" : "받고 싶어해요"}` : "아직 응답한 분이 없어요"}
+              </div>
+              {it.requesters?.length > 0 && (
+                <div>
+                  {!openPanel[it.id] ? (
+                    <button onClick={() => togglePanel(it.id)} style={{ fontSize: 13, padding: "7px 14px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 600 }}>
+                      {it.type === "want" ? "나눔해주실 분 선택하기" : "받을 분 선택하기"} ›
+                    </button>
+                  ) : (
+                    <div style={{ background: "#F3EFE2", borderRadius: 10, padding: 14 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>
+                        {it.type === "want" ? "나눔해주실 분을 골라주세요" : "받으실 분을 골라주세요"}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 14 }}>
+                        {it.requesters.map((r) => (
+                          <button key={r} onClick={() => setPickedReceiver((p) => ({ ...p, [it.id]: r }))}
+                            style={{ padding: "7px 12px", borderRadius: 20, border: pickedReceiver[it.id] === r ? "1.5px solid #5C6E4B" : "1px solid #DCD3BC", background: pickedReceiver[it.id] === r ? "#EAF0E3" : "#FDFBF5", color: pickedReceiver[it.id] === r ? "#4C5C3E" : "#6B6455", fontSize: 13, fontWeight: 600 }}>
+                            {r}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>신입반실에 갖다놓을 날짜</div>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                        <input type="date" min={todayISO()} value={pickedDate[it.id] || ""} onChange={(e) => setPickedDate((p) => ({ ...p, [it.id]: e.target.value }))}
+                          style={{ flex: 1, padding: "9px 10px", borderRadius: 7, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 13.5 }} />
+                        <button onClick={() => setPickedDate((p) => ({ ...p, [it.id]: tomorrowISO() }))}
+                          style={{ padding: "9px 12px", borderRadius: 7, border: "1px solid #DCD3BC", background: "#FDFBF5", color: "#6B6455", fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap" }}>
+                          내일로 자동선택
+                        </button>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => onConfirm(it.id)} style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 700, fontSize: 13.5 }}>이 분으로 확정할게요</button>
+                        <button onClick={() => togglePanel(it.id)} style={{ padding: "10px 14px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>닫기</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+          {it.status === "matched" && (
+            <div style={{ background: "#F8F2DD", borderRadius: 10, padding: 13 }}>
+              <div style={{ fontSize: 13.5, color: "#5C5745", marginBottom: 10, lineHeight: 1.6 }}>
+                {it.type === "want" ? (
+                  <><strong>{it.selectedReceiverId}</strong>님이 주시기로 했어요.</>
+                ) : (
+                  <><strong>{it.selectedReceiverId}</strong>님에게 전달돼요.</>
+                )}<br />📅 {fmtDate(it.dropOffDate)}에 신입반실에서 만나요.
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => onDone(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontSize: 12.5, fontWeight: 600 }}>나눔 완료했어요</button>
+                <button onClick={() => onUndo(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 12.5 }}>다시 선택하기</button>
+              </div>
+            </div>
+          )}
+          {it.status === "done" && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>✅ {it.selectedReceiverId}님과 잘 나눔했어요.</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RequestedList({ items, myId, onCancel }) {
+  if (items.length === 0) return <EmptyState icon="📥" text="신청한 나눔이 없어요." sub="둘러보기에서 받고 싶은 물건을 찾아보세요." />;
+  return (
+    <div>
+      {items.map((it) => {
+        const selected = it.selectedReceiverId === myId;
+        const decided = it.status === "matched" || it.status === "done";
+        return (
+          <div key={it.id} style={{ padding: "16px 0", borderBottom: "1px solid #ECE4D2" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 20 }}>{emojiFor(it.category)}</span>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{it.title}</span>
+                <TypeTag type={it.type} />
+              </div>
+              {!decided && (
+                <button onClick={() => onCancel(it.id)} style={{ fontSize: 11.5, padding: "5px 10px", borderRadius: 6, border: "1px solid #DCD3BC", background: "none", color: "#8B8577" }}>
+                  요청취소
+                </button>
+              )}
+            </div>
+            {!decided && <div style={{ fontSize: 12.5, color: "#8B8577" }}>🕐 게시하신 분이 아직 고르고 계세요</div>}
+            {decided && selected && (
+              <div style={{ fontSize: 13, color: "#4C5C3E", fontWeight: 600 }}>
+                {it.status === "done"
+                  ? "이미 마무리됐어요."
+                  : it.type === "want"
+                  ? `${fmtDate(it.dropOffDate)}에 신입반실에 가져다 주시면 돼요.`
+                  : `${fmtDate(it.dropOffDate)}에 신입반실에서 받으실 수 있어요.`}
+              </div>
+            )}
+            {decided && !selected && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>{it.type === "want" ? "이번에는 다른 분이 나눔하기로 했어요." : "이번에는 다른 분이 받게 되었어요."}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<ChurchSharingApp />);
 </script>
 </body>
 </html>

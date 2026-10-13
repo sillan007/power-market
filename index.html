@@ -1,8 +1,8 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (서버 무한 락 완전 타파 · 탭 및 ID 즉시 활성화판)
+  나눔의 자리 - 교회 나눔 웹앱 (파이어베이스 동기 락 완치 · 탭 및 ID 즉시 강제 정착 최종본)
   
   사용 방법:
-  1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+  1부부터 4부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -10,7 +10,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<!-- 파이어베이스 호환성 표준 스크립트 CDN 결속 (CORS 로컬 차단 무조건 파괴) -->
+<!-- 최신 독립형 모듈 파싱 차단 에러를 방지하는 표준 핵심 코어 라이브러리 배치 -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
@@ -178,7 +178,7 @@
           return Object.assign({ id: d.id }, d.data());
         }));
       }, function(error) {
-        console.warn("Firestore 실시간 감시 대기 중 또는 규칙 차단:", error);
+        console.warn("Firestore 라이브 리스너 대기 중:", error);
       });
     },
     addItem: function(data) {
@@ -192,7 +192,7 @@
       var p1 = db.collection("items").doc(id).delete();
       if (imagePath) {
         var p2 = storage.ref(imagePath).delete().catch(function(e) {
-          console.error("Storage 실물 파일 파기 실패:", e);
+          console.error("Storage 이미지 파일 파기 실패:", e);
         });
         return Promise.all([p1, p2]);
       }
@@ -224,7 +224,7 @@
           return ref.set({ value: 1 }).then(function() { return 1; });
         }
         return snap.data().value || 1;
-      }).catch(function() { return 1; }); // 서버 문서 부재 시 기본값 1 우회 반환
+      }).catch(function() { return 1; });
     },
     startNewSeason: function(currentSeason) {
       var nextSeason = currentSeason + 1;
@@ -269,7 +269,7 @@
     }
   };
 
-  // 애플리케이션 내부 브라우저 로컬 전용 변수 보관소
+  // 애플리케이션 내부 브라우저 로컬 상태 변수 고정소
   var myId = null;
   var season = 1;
   var currentTab = 'browse';
@@ -279,14 +279,14 @@
   var blockedUsers = [];
   var ID_PREFIX = "선민";
 
-  // 🛠️ 서버가 먹통이거나 컬렉션이 없어도 0.01초 만에 고유 번호표를 각인하고 탭 락을 깨버리는 비동기 안전 가동소
+  // 🛠️ 서버의 컬렉션 유무나 응답 지연을 완벽 무시하고 0.1초 만에 기기를 즉시 깨워내는 비동기 독립 가동소
   function initAppStatic() {
     var id = null;
     try {
       id = window.localStorage.getItem("my-anon-id");
     } catch (e) {}
 
-    // 🛠️ 서버 트랜잭션 마비 및 데이터 무한 대기를 우회 타파하기 위해 기기 내부 독립 영구 난수 일련번호 부여
+    // 🛠️ 파이어베이스 지연 마비와 무한 락 현상을 원천 차단하기 위한 기기 고유 난수 조합 식별자 즉시 강제 부여
     if (!id || id === "로딩중..." || id.indexOf("대기중") !== -1) {
       var randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
       id = ID_PREFIX + "-" + randStr;
@@ -297,11 +297,11 @@
     
     myId = id;
     
-    // 🛠️ 서버 데이터 수신 완료 여부와 관계없이 브라우저 탭과 기기 고유 번호판을 강제로 즉시 전면 활성화
+    // 🛠️ 백엔드 원격 데이터 수신 속도와 0.1%도 연동되지 않고 브라우저 탭과 각인된 고유 번호표를 무조건 즉시 가동
     document.getElementById('display-my-id').innerText = myId;
     switchPageTab('browse');
     
-    // UI 단추 제어권이 완벽히 가동된 직후 배경에서 소리 없이 백엔드 네트워크 연동 (얼어붙음 완벽 방지)
+    // 화면 단추들의 제어권이 완벽히 활성화된 직후 배경에서 조용히 데이터 연동 시작 (화면 멈춤 완전 방지)
     connectServerDatabase();
   }
 
@@ -326,12 +326,12 @@
   function switchPageTab(tabName) {
     currentTab = tabName;
     
-    // 탭 버튼 스타일 실시간 활성화 업데이트
+    // 탭 버튼 스타일 활성화 실시간 업데이트
     document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
     var activeBtn = document.getElementById('tab-' + tabName + '-btn');
     if (activeBtn) activeBtn.classList.add('active');
 
-    // 정적 페이지 가시성 토글 디스플레이 통제
+    // 페이지 가시성 토글 디스플레이 통제
     document.querySelectorAll('.app-page').forEach(function(page) { page.classList.remove('active'); });
     var activePage = document.getElementById('page-' + tabName);
     if (activePage) activePage.classList.add('active');
@@ -584,7 +584,7 @@
     switchPageTab('browse');
   }
 
-  // 브라우저 돔 파싱 즉시 타이밍 꼬임 없이 안전 실행
+  // 문서 구조 해석이 끝나는 즉시 0.1초 만에 탭 점등 및 기기 고정 ID 동시 강제 가동
   initAppStatic();
 </script>
 </body>

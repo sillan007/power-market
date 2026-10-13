@@ -69,20 +69,6 @@
     async deleteItem(id) {
       await deleteDoc(doc(db, "items", id));
     },
-    async ensureUser(id, season) {
-      await setDoc(doc(db, "users", id), { id, season, lastSeen: Date.now() }, { merge: true });
-    },
-    async getUserDoc(id) {
-      const snap = await getDoc(doc(db, "users", id));
-      return snap.exists() ? snap.data() : null;
-    },
-    async listUsers() {
-      const snap = await getDocs(collection(db, "users"));
-      return snap.docs.map((d) => d.data());
-    },
-    async banUser(id) {
-      await updateDoc(doc(db, "users", id), { banned: true });
-    },
     async requestItem(id, myId) {
       await updateDoc(doc(db, "items", id), { requesters: arrayUnion(myId) });
     },
@@ -132,7 +118,7 @@ const CATEGORIES = [
   { key: "etc", label: "기타", emoji: "🎁" },
 ];
 const ID_PREFIX = "선민";
-const ADMIN_PIN = "ps0000!"; // 관리자 암호 - 실제 사용 전 꼭 바꿔주세요
+const ADMIN_PIN = "0000"; // 관리자 암호 - 실제 사용 전 꼭 바꿔주세요
 
 function emojiFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.emoji || "🎁"; }
 function labelFor(cat) { return CATEGORIES.find((c) => c.key === cat)?.label || "기타"; }
@@ -159,18 +145,12 @@ function ChurchSharingApp() {
   const [myId, setMyId] = useState(null);
   const [season, setSeason] = useState(1);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [adminAuthed, setAdminAuthed] = useState(false);
-  const [adminView, setAdminView] = useState("menu");
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [adminUsersLoading, setAdminUsersLoading] = useState(false);
   const [pin, setPin] = useState("");
-  const [blocked, setBlocked] = useState(false);
   const [tab, setTab] = useState("browse");
   const [showDone, setShowDone] = useState(false);
   const [items, setItems] = useState([]);
   const [ready, setReady] = useState(false);
   const [toast, setToast] = useState("");
-  const [initError, setInitError] = useState("");
   const toastTimer = useRef(null);
 
   const [form, setForm] = useState({ title: "", desc: "", category: "living", type: "give" });
@@ -189,44 +169,27 @@ function ChurchSharingApp() {
   useEffect(() => {
     let unsub = null;
     (async () => {
+      const fb = await waitForFb();
+      setFbApi(fb);
+
+      const currentSeason = await fb.getSeason();
+      let id = null;
       try {
-        const fb = await waitForFb();
-        setFbApi(fb);
-
-        const currentSeason = await fb.getSeason();
-        let id = null;
-        try {
-          const raw = localStorage.getItem("my-anon-id");
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed.season === currentSeason) id = parsed.id;
-          }
-        } catch (e) {}
-        if (!id) {
-          const n = await fb.nextId(currentSeason);
-          id = `${ID_PREFIX}${n}`;
-          localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
+        const raw = localStorage.getItem("my-anon-id");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.season === currentSeason) id = parsed.id;
         }
-
-        await fb.ensureUser(id, currentSeason);
-        const userDoc = await fb.getUserDoc(id);
-
-        setMyId(id);
-        setSeason(currentSeason);
-
-        if (userDoc?.banned) {
-          setBlocked(true);
-          setReady(true);
-          return;
-        }
-
-        unsub = fb.watchItems((list) => setItems(list));
-        setReady(true);
-      } catch (err) {
-        console.error(err);
-        setInitError(err?.message || String(err));
-        setReady(true);
+      } catch (e) {}
+      if (!id) {
+        const n = await fb.nextId(currentSeason);
+        id = `${ID_PREFIX}${n}`;
+        localStorage.setItem("my-anon-id", JSON.stringify({ id, season: currentSeason }));
       }
+      setMyId(id);
+      setSeason(currentSeason);
+      unsub = fb.watchItems((list) => setItems(list));
+      setReady(true);
     })();
     return () => { if (unsub) unsub(); };
   }, []);
@@ -279,32 +242,8 @@ function ChurchSharingApp() {
     const next = await fbApi.startNewSeason(season);
     setSeason(next);
     setAdminOpen(false);
-    setAdminAuthed(false);
-    setAdminView("menu");
     setPin("");
     showToast("새 시즌이 시작됐어요. 모두 다음 접속부터 새 번호를 받아요.");
-  };
-
-  const openAdminUsers = async () => {
-    setAdminView("users");
-    setAdminUsersLoading(true);
-    const list = await fbApi.listUsers();
-    const numOf = (s) => parseInt(String(s.id || "").replace(/\D/g, ""), 10) || 0;
-    setAdminUsers(list.filter((u) => u.season === season && !u.banned).sort((a, b) => numOf(a) - numOf(b)));
-    setAdminUsersLoading(false);
-  };
-
-  const banUser = async (id) => {
-    if (!window.confirm(`${id}님의 이용을 제한할까요?`)) return;
-    await fbApi.banUser(id);
-    setAdminUsers((list) => list.filter((u) => u.id !== id));
-    showToast(`${id}님의 이용이 제한되었어요.`);
-  };
-
-  const adminDeleteItem = async (itemId) => {
-    if (!window.confirm("이 게시글을 삭제할까요? 되돌릴 수 없어요.")) return;
-    await fbApi.deleteItem(itemId);
-    showToast("게시글을 삭제했어요.");
   };
 
   if (!ready) {
@@ -313,31 +252,6 @@ function ChurchSharingApp() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 320, gap: 12, color: "#8b8577" }}>
           <span style={{ fontSize: 26 }}>🎁</span>
           <div style={{ fontSize: 14 }}>자리를 준비하고 있어요…</div>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (initError) {
-    return (
-      <Shell>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 360, gap: 10, color: "#8b8577", padding: 30, textAlign: "center" }}>
-          <span style={{ fontSize: 26 }}>⚠️</span>
-          <div style={{ fontSize: 14, color: "#6B6455" }}>불러오는 중 문제가 생겼어요.</div>
-          <div style={{ fontSize: 12, color: "#A39C8C", wordBreak: "break-all" }}>{initError}</div>
-        </div>
-      </Shell>
-    );
-  }
-
-  if (blocked) {
-    return (
-      <Shell>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 360, gap: 10, color: "#8b8577", padding: 30, textAlign: "center" }}>
-          <span style={{ fontSize: 26 }}>🙏</span>
-          <div style={{ fontSize: 14.5, color: "#6B6455", lineHeight: 1.6 }}>
-            관리자에 의해 이용이 제한되었어요.<br />문의사항은 교회 행정실로 연락해주세요.
-          </div>
         </div>
       </Shell>
     );
@@ -382,104 +296,23 @@ function ChurchSharingApp() {
 
       {adminOpen && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(42,40,35,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: 20 }}>
-          <div style={{ background: "#FDFBF5", borderRadius: 12, padding: 22, width: "100%", maxWidth: 340, maxHeight: "80vh", overflowY: "auto" }}>
-
-            {!adminAuthed && (
-              <>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>관리자 확인</div>
-                <input type="password" placeholder="관리자 암호" value={pin} onChange={(e) => setPin(e.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1px solid #DCD3BC", marginBottom: 14, fontSize: 14 }} />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { if (pin !== ADMIN_PIN) { showToast("암호가 올바르지 않아요."); return; } setAdminAuthed(true); setPin(""); }}
-                    style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontWeight: 700, fontSize: 13.5 }}>
-                    확인
-                  </button>
-                  <button onClick={() => { setAdminOpen(false); setPin(""); }}
-                    style={{ padding: "10px 14px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>
-                    취소
-                  </button>
-                </div>
-              </>
-            )}
-
-            {adminAuthed && adminView === "menu" && (
-              <>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>관리자 메뉴</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-                  <button onClick={() => setAdminView("posts")} style={{ padding: "12px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", textAlign: "left", fontSize: 13.5, fontWeight: 600, color: "#4A4638" }}>
-                    📋 게시글 관리
-                  </button>
-                  <button onClick={openAdminUsers} style={{ padding: "12px", borderRadius: 8, border: "1px solid #DCD3BC", background: "#FDFBF5", textAlign: "left", fontSize: 13.5, fontWeight: 600, color: "#4A4638" }}>
-                    👤 사용자 관리
-                  </button>
-                  <button onClick={() => setAdminView("season")} style={{ padding: "12px", borderRadius: 8, border: "1px solid #E3C9BE", background: "#FDFBF5", textAlign: "left", fontSize: 13.5, fontWeight: 600, color: "#B5432F" }}>
-                    🔄 새 시즌 시작 (전체 초기화)
-                  </button>
-                </div>
-                <button onClick={() => { setAdminOpen(false); setAdminAuthed(false); }}
-                  style={{ width: "100%", padding: "10px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>
-                  닫기
-                </button>
-              </>
-            )}
-
-            {adminAuthed && adminView === "season" && (
-              <>
-                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>새 시즌 시작하기</div>
-                <div style={{ fontSize: 12.5, color: "#8B8577", marginBottom: 14, lineHeight: 1.55 }}>
-                  현재 등록된 나눔이 모두 지워지고, 다음 접속부터 모든 분들이 {ID_PREFIX}1 부터 새 번호를 받아요. 차단했던 사용자도 함께 초기화돼요. 되돌릴 수 없어요.
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={startNewSeason} style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#B5432F", color: "#FDFBF5", fontWeight: 700, fontSize: 13.5 }}>
-                    초기화 진행
-                  </button>
-                  <button onClick={() => setAdminView("menu")} style={{ padding: "10px 14px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>
-                    뒤로
-                  </button>
-                </div>
-              </>
-            )}
-
-            {adminAuthed && adminView === "posts" && (
-              <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>게시글 관리 ({items.length})</div>
-                  <button onClick={() => setAdminView("menu")} style={{ fontSize: 12.5, color: "#8B8577", background: "none", border: "none" }}>뒤로</button>
-                </div>
-                {items.length === 0 && <div style={{ fontSize: 13, color: "#A39C8C", padding: "20px 0" }}>게시글이 없어요.</div>}
-                {items.map((it) => (
-                  <div key={it.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "9px 0", borderBottom: "1px solid #ECE4D2" }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
-                      <div style={{ fontSize: 11, color: "#A39C8C" }}>{it.type === "want" ? "요청" : "나눔"} · {it.giverId} · {it.status === "open" ? "진행중" : it.status === "matched" ? "전달예정" : "완료"}</div>
-                    </div>
-                    <button onClick={() => adminDeleteItem(it.id)} style={{ fontSize: 11.5, padding: "5px 9px", borderRadius: 6, border: "1px solid #E3C9BE", background: "none", color: "#B5432F", flexShrink: 0 }}>
-                      삭제
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {adminAuthed && adminView === "users" && (
-              <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700 }}>사용자 관리 ({adminUsers.length})</div>
-                  <button onClick={() => setAdminView("menu")} style={{ fontSize: 12.5, color: "#8B8577", background: "none", border: "none" }}>뒤로</button>
-                </div>
-                {adminUsersLoading && <div style={{ fontSize: 13, color: "#A39C8C", padding: "20px 0" }}>불러오는 중…</div>}
-                {!adminUsersLoading && adminUsers.length === 0 && <div style={{ fontSize: 13, color: "#A39C8C", padding: "20px 0" }}>등록된 사용자가 없어요.</div>}
-                {!adminUsersLoading && adminUsers.map((u) => (
-                  <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: "1px solid #ECE4D2" }}>
-                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{u.id}</span>
-                    <button onClick={() => banUser(u.id)} style={{ fontSize: 11.5, padding: "5px 9px", borderRadius: 6, border: "1px solid #E3C9BE", background: "none", color: "#B5432F" }}>
-                      이용 제한
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
-
+          <div style={{ background: "#FDFBF5", borderRadius: 12, padding: 22, width: "100%", maxWidth: 320 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>새 시즌 시작하기</div>
+            <div style={{ fontSize: 12.5, color: "#8B8577", marginBottom: 14, lineHeight: 1.55 }}>
+              현재 등록된 나눔이 모두 지워지고, 다음 접속부터 모든 분들이 {ID_PREFIX}1 부터 새 번호를 받아요. 되돌릴 수 없어요.
+            </div>
+            <input type="password" placeholder="관리자 암호" value={pin} onChange={(e) => setPin(e.target.value)}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 7, border: "1px solid #DCD3BC", marginBottom: 14, fontSize: 14 }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { if (pin !== ADMIN_PIN) { showToast("암호가 올바르지 않아요."); return; } startNewSeason(); }}
+                style={{ flex: 1, padding: "10px", borderRadius: 7, border: "none", background: "#B5432F", color: "#FDFBF5", fontWeight: 700, fontSize: 13.5 }}>
+                초기화 진행
+              </button>
+              <button onClick={() => { setAdminOpen(false); setPin(""); }}
+                style={{ padding: "10px 14px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 13.5 }}>
+                취소
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -553,8 +386,8 @@ function TypeTag({ type }) {
 function StatusTag({ status }) {
   const map = {
     open: { label: "나눔중", bg: "#EAF0E3", fg: "#4C5C3E" },
-    matched: { label: "나눔 예정", bg: "#F3E9C9", fg: "#7A6420" },
-    done: { label: "나눔 완료", bg: "#EFEAE0", fg: "#8B8577" },
+    matched: { label: "전달 예정", bg: "#F3E9C9", fg: "#7A6420" },
+    done: { label: "전달 완료", bg: "#EFEAE0", fg: "#8B8577" },
   };
   const s = map[status] || map.open;
   return <span style={{ fontSize: 11, fontWeight: 600, background: s.bg, color: s.fg, padding: "3px 8px", borderRadius: 5, whiteSpace: "nowrap" }}>{s.label}</span>;
@@ -699,7 +532,7 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
                           </button>
                         ))}
                       </div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>신입반실에 갖다놓을 날짜</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#5C5745", marginBottom: 8 }}>행정실에서 주고받을 날짜</div>
                       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                         <input type="date" min={todayISO()} value={pickedDate[it.id] || ""} onChange={(e) => setPickedDate((p) => ({ ...p, [it.id]: e.target.value }))}
                           style={{ flex: 1, padding: "9px 10px", borderRadius: 7, border: "1px solid #DCD3BC", background: "#FDFBF5", fontSize: 13.5 }} />
@@ -725,15 +558,15 @@ function MineList({ items, openPanel, togglePanel, pickedReceiver, setPickedRece
                   <><strong>{it.selectedReceiverId}</strong>님이 주시기로 했어요.</>
                 ) : (
                   <><strong>{it.selectedReceiverId}</strong>님에게 전달돼요.</>
-                )}<br />📅 {fmtDate(it.dropOffDate)}에 신입반실에서 만나요.
+                )}<br />📅 {fmtDate(it.dropOffDate)}에 행정실에서 만나요.
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => onDone(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontSize: 12.5, fontWeight: 600 }}>나눔 완료했어요</button>
+                <button onClick={() => onDone(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "none", background: "#5C6E4B", color: "#F6F2E8", fontSize: 12.5, fontWeight: 600 }}>전달 완료했어요</button>
                 <button onClick={() => onUndo(it.id)} style={{ padding: "8px 13px", borderRadius: 7, border: "1px solid #DCD3BC", background: "none", color: "#8B8577", fontSize: 12.5 }}>다시 선택하기</button>
               </div>
             </div>
           )}
-          {it.status === "done" && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>✅ {it.selectedReceiverId}님과 잘 나눔했어요.</div>}
+          {it.status === "done" && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>✅ {it.selectedReceiverId}님과 잘 마무리됐어요.</div>}
         </div>
       ))}
     </div>
@@ -767,8 +600,8 @@ function RequestedList({ items, myId, onCancel }) {
                 {it.status === "done"
                   ? "이미 마무리됐어요."
                   : it.type === "want"
-                  ? `${fmtDate(it.dropOffDate)}에 신입반실에 가져다 주시면 돼요.`
-                  : `${fmtDate(it.dropOffDate)}에 신입반실에서 받으실 수 있어요.`}
+                  ? `${fmtDate(it.dropOffDate)}에 행정실에 가져다 주시면 돼요.`
+                  : `${fmtDate(it.dropOffDate)}에 행정실에서 받으실 수 있어요.`}
               </div>
             )}
             {decided && !selected && <div style={{ fontSize: 12.5, color: "#A39C8C" }}>{it.type === "want" ? "이번에는 다른 분이 나눔하기로 했어요." : "이번에는 다른 분이 받게 되었어요."}</div>}

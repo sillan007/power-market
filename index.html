@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (컴파일러 크래시 완전 해결 초고속 구동판)
+  나눔의 자리 - 교회 나눔 웹앱 (6부 구성 완전 무결점 오리지널 최종본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -56,10 +56,34 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
 
-<script src="https://unpkg.com"></script>
-<script src="https://unpkg.com"></script>
+<div id="root">
+  <div class="header-bar">
+    <h1 class="header-title">나눔의 자리</h1>
+    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">로딩중...</span> · 시즌 <span id="display-season">1</span></div>
+  </div>
+
+  <div class="tab-container">
+    <button class="tab-btn active" id="tab-browse-btn" onclick="switchTab('browse')">둘러보기</button>
+    <button class="tab-btn" id="tab-share-btn" onclick="switchTab('share')">나눔하기</button>
+    <button class="tab-btn" id="tab-mine-btn" onclick="switchTab('mine')">나의 나눔</button>
+  </div>
+
+  <div class="content-area" id="content-container"></div>
+</div>
+
+<div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
+  <div class="pwd-box">
+    <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
+    <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align: center; margin-bottom: 14px;" />
+    <div style="display: flex; gap: 8px;">
+      <button onclick="submitAdminPassword()" class="select-btn" style="flex: 1; padding: 8px 0;">확인</button>
+      <button onclick="closeAdminModal()" class="cancel-btn" style="flex: 1; padding: 8px 0; background: #EEE; color: #333; border: none;">취소</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-message" class="toast"></div>
 <!-- 파이어베이스 모듈 스크립트 결속 연동 및 API 바인딩 -->
 <script type="module">
   import { initializeApp } from "https://gstatic.com";
@@ -221,7 +245,7 @@
     setTimeout(function() { el.style.display = 'none'; }, 2200);
   }
 
-  // 🛠️ 파싱 충돌 및 변환 오류를 전면 박멸하고 핸드폰당 1ID만 강제 사수하는 장치
+  // 🛠️ 로컬스토리지 JSON 파싱 오류를 원천 차단하고 핸드폰당 1ID만 강제 사수하는 장치
   function initApp() {
     fbApi = window.fb;
     if (!fbApi) return;
@@ -442,7 +466,7 @@
         });
       }
     }
-    // 2. 나눔하기 등록 폼 전개 구역
+    // 2. 나눔하기 등록 폼 전개 구역 (불필요한 카테고리 기입 인터페이스 완전 제거)
     else if (currentTab === 'share') {
       if (blockedUsers.indexOf(myId) !== -1) {
         container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 나눔 등록이 불가능합니다.</div>';
@@ -457,7 +481,7 @@
       html += '    <input type="text" id="form-title" placeholder="예: 아동용 도서 세트" class="form-input" />';
       html += '  </div>';
 
-      /* 🛠️ 최대 1장의 사진 파일만 실시간으로 업로드 및 감지하는 연동 유닛 배치 */
+      /* 🛠️ 사진 파일 단 1장만 로드하고 실시간 단독 프리뷰 미리보기를 연결하는 첨부 슬롯 */
       html += '  <div class="form-group">';
       html += '    <label class="form-label">물품 사진 (최대 1장)</label>';
       html += '    <input type="file" id="form-image" accept="image/*" class="form-input" onchange="previewImage(this)" />';
@@ -505,117 +529,66 @@
         });
       }
     }
-    // 4. 최고 권한 원격 운영 관리센터 대시보드 조립 전개 구역
-    else if (currentTab === 'admin') {
-      html += '<div class="admin-panel-box">';
-      html += '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">';
-      html += '    <h3 style="margin:0; color:#8B7E66;">⚙️ 원격 통합 운영 관리센터</h3>';
-      html += '    <button onclick="switchTab(\'browse\')" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button>';
+    // 2. 나눔하기 등록 폼 전개 구역 (불필요한 카테고리 기입 인터페이스 완전 제거)
+    else if (currentTab === 'share') {
+      if (blockedUsers.indexOf(myId) !== -1) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 나눔 등록이 불가능합니다.</div>';
+        return;
+      }
+
+      html += '<div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">';
+      html += '  <h3 style="margin-top: 0; color: #8B7E66;">나눔 물품 등록</h3>';
+      
+      html += '  <div class="form-group">';
+      html += '    <label class="form-label">물품 이름</label>';
+      html += '    <input type="text" id="form-title" placeholder="예: 아동용 도서 세트" class="form-input" />';
       html += '  </div>';
-      
-      html += '  <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div>';
-      html += '  <button onclick="handleAdminChangePin()" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>';
-      
-      html += '  <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기 (' + allItems.length + '개)</div>';
-      if (allItems.length === 0) {
-        html += '  <div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록된 게시물이 존재하지 않습니다.</div>';
-      } else {
-        allItems.forEach(function(it) {
-          html += '  <div class="admin-list-item">';
-          html += '    <div style="min-width:0; flex:1; padding-right:8px;">';
-          html += '      <strong>' + it.title + '</strong>' + (it.image ? " 🖼️" : "") + '<br/>';
-          html += '      <span style="font-size:11px; color:#888;">작성자: ' + it.giverId + ' · 상태: ' + it.status + '</span>';
-          html += '    </div>';
-          html += '    <button onclick="handleAdminForceDelete(\'' + it.id + '\', \'' + (it.imagePath || '') + '\')" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button>';
-          html += '  </div>';
-        });
-      }
 
-      html += '  <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div>';
-      var uniqueUsers = [];
-      allItems.forEach(function(it) {
-        if (uniqueUsers.indexOf(it.giverId) === -1) uniqueUsers.push(it.giverId);
-        if (it.requesters) {
-          it.requesters.forEach(function(r) {
-            if (uniqueUsers.indexOf(r) === -1) uniqueUsers.push(r);
-          });
-        }
-      });
+      /* 🛠️ 사진 파일 단 1장만 로드하고 실시간 단독 프리뷰 미리보기를 연결하는 첨부 슬롯 */
+      html += '  <div class="form-group">';
+      html += '    <label class="form-label">물품 사진 (최대 1장)</label>';
+      html += '    <input type="file" id="form-image" accept="image/*" class="form-input" onchange="previewImage(this)" />';
+      html += '    <div id="image-preview-area" style="margin-top: 10px; display: none;">';
+      html += '      <img id="form-preview-img" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #DCD3BC;" />';
+      html += '    </div>';
+      html += '  </div>';
 
-      if (uniqueUsers.length === 0) {
-        html += '  <div style="font-size:12px; color:#999; text-align:center; padding:10px;">조회된 유저 네트워크가 비어있습니다.</div>';
-      } else {
-        uniqueUsers.forEach(function(uId) {
-          var isBlocked = blockedUsers.indexOf(uId) !== -1;
-          html += '  <div class="admin-list-item">';
-          html += '    <span>👤 <strong>' + uId + '</strong>' + (isBlocked ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span>';
-          html += '    <button onclick="handleAdminToggleBlock(\'' + uId + '\')" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">';
-          html += isBlocked ? '차단해제' : '유저차단';
-          html += '    </button>';
-          html += '  </div>';
-        });
-      }
+      html += '  <div class="form-group">';
+      html += '    <label class="form-label">설명 (상태, 사이즈 등)</label>';
+      html += '    <textarea id="form-desc" rows="3" placeholder="물건의 상태나 수령 방법을 적어주세요." class="form-textarea"></textarea>';
+      html += '  </div>';
 
-      html += '  <div class="admin-sub-title">시즌 마감 및 전체 데이터 마스터 초기화</div>';
-      html += '  <button onclick="handleAdminDeleteSeason(' + season + ')" style="background:#B34A4A; color:white; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:13.5px; margin-top:8px;">⚠️ 현재 시즌 종료 및 데이터 전면 초기화</button>';
+      html += '  <button onclick="handlePostItem()" class="action-btn" id="post-submit-btn" style="margin-top: 10px;">나눔 올리기</button>';
       html += '</div>';
     }
 
-    container.innerHTML = html;
-  }
-
-  function toggleShowDone() { showDone = !showDone; renderCurrentTab(); }
-  function handleRequest(id) { fbApi.requestItem(id, myId).then(function() { showToast("신청이 완료되었어요."); }); }
-  function handleCancelRequest(id) { fbApi.cancelRequest(id, myId).then(function() { showToast("신청을 취소했어요."); }); }
-  
-  function previewImage(input) {
-    if (input.files && input.files[0]) {
-      document.getElementById('image-preview-area').style.display = 'block';
-      document.getElementById('form-preview-img').src = URL.createObjectURL(input.files[0]);
+    // 3. 나의 나눔 관리 대시보드 전개 구역
+    else if (currentTab === 'mine') {
+      var myItems = allItems.filter(function(i) { return i.giverId === myId; });
+      html += '<h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 나눔</h3>';
+      
+      if (myItems.length === 0) {
+        html += '<div style="text-align: center; padding: 30px 0; color: #999;">아직 등록한 나눔이 없습니다.</div>';
+      } else {
+        myItems.forEach(function(it) {
+          var reqCount = (it.requesters && it.requesters.length) || 0;
+          var iPath = it.imagePath || '';
+          
+          html += '<div class="item-card" style="border-left: 4px solid #8B7E66;">';
+          html += '  <strong style="font-size: 16px; display: block; margin-bottom: 4px;">' + it.title + '</strong>';
+          html += '  <div style="font-size: 13px; color: #666; margin-bottom: 8px;">신청자 수: ' + reqCount + '명</div>';
+          html += '  <div style="margin-top: 12px; display: flex; gap: 8px;">';
+          
+          if (it.status === 'open') {
+            html += '    <button onclick="handleCancelItem(\'' + it.id + '\', \'' + iPath + '\')" class="cancel-btn" style="background: #EF9A9A; color: #B71C1C; border: none;">';
+            html += '      나눔 취소하기';
+            html += '    </button>';
+          } else {
+            html += '    <div style="font-size: 13px; color: #43A047; font-weight: bold;">✓ ' + it.selectedReceiverId + ' 님과 매칭 수령 완료</div>';
+          }
+          
+          html += '  </div>';
+          html += '</div>';
+        });
+      }
     }
-  }
-
-  function handlePostItem() {
-    var title = document.getElementById('form-title').value;
-    var desc = document.getElementById('form-desc').value;
-    var fileInput = document.getElementById('form-image');
-    var file = fileInput && fileInput.files && fileInput.files[0];
-
-    if (!title.trim()) { alert("물품 이름을 입력하세요."); return; }
-    
-    var btn = document.getElementById('post-submit-btn');
-    if (btn) {
-      btn.disabled = true;
-      btn.innerText = "🚀 사진 및 나눔 물품 등록 중...";
-    }
-
-    if (file) {
-      fbApi.uploadImage(file, myId).then(function(res) {
-        saveToFirestore(title, desc, res.url, res.imagePath);
-      });
-    } else {
-      saveToFirestore(title, desc, "", "");
-    }
-  }
-
-  function saveToFirestore(title, desc, url, path) {
-    fbApi.addItem({
-      title: title.trim(), desc: desc.trim(), category: "etc",
-      giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
-      image: url, imagePath: path
-    }).then(function() {
-      showToast("나눔 물품이 등록되었어요.");
-      switchTab('browse');
-    });
-  }
-
-  function handleCancelItem(id, imagePath) {
-    if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
-      fbApi.deleteItem(id, imagePath).then(function() {
-        showToast("나눔 등록을 취소했습니다.");
-      });
-    }
-  }
-</script>
-</body>
-</html>

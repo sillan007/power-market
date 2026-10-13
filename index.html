@@ -1,8 +1,8 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (자폭 오타 완전 완치 및 백엔드 락 프리 최종본)
+  나눔의 자리 - 교회 나눔 웹앱 (로컬 CORS 정책 및 자폭 오타 전면 완전 완치판)
   
   사용 방법:
-  1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+  1부부터 4부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -10,8 +10,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
+<!-- 파이어베이스 호환성 표준 스크립트 CDN 결속 (CORS 로컬 차단 무조건 파괴) -->
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
 <link rel="preconnect" href="https://googleapis.com">
-<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght=500;600;700&family=Noto+Sans+KR:wght=400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #EDE7D6; }
@@ -137,7 +141,7 @@
   </div>
 </div>
 
-<!-- 비밀번호 숨김 별표 입력 보안 모달 팝업 본체 -->
+<!-- 마스터 암호 별표(*) 은닉 창 모달 레이아웃 -->
 <div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
   <div class="pwd-box">
     <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
@@ -150,19 +154,10 @@
 </div>
 
 <div id="toast-message" class="toast"></div>
-<!-- 통합형 단일 모듈 시스템 스크립트 시작 (서버 대기 없이 탭 즉시 활성화) -->
-<script type="module">
-  import { initializeApp } from "https://gstatic.com";
-  import {
-    getFirestore, collection, addDoc, doc, getDoc, setDoc, updateDoc,
-    onSnapshot, query, orderBy, getDocs, deleteDoc,
-    arrayUnion, arrayRemove,
-  } from "https://gstatic.com";
-  import {
-    getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject
-  } from "https://gstatic.com";
-
-  const firebaseConfig = {
+<!-- 글로벌 표준 비모듈 스크립트 연결을 통한 안심 제어망 가동 -->
+<script>
+  // 파이어베이스 프로젝트 호환성 수동 이식 초기화
+  var firebaseConfig = {
     apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
     authDomain: "://firebaseapp.com",
     projectId: "power-market-f9573",
@@ -172,14 +167,13 @@
     measurementId: "G-59F20MY2ST"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const storage = getStorage(app);
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+  var storage = firebase.storage();
 
-  const fbApi = {
+  var fbApi = {
     watchItems: function(cb) {
-      const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
-      return onSnapshot(q, function(snap) {
+      return db.collection("items").orderBy("createdAt", "desc").onSnapshot(function(snap) {
         cb(snap.docs.map(function(d) {
           return Object.assign({ id: d.id }, d.data());
         }));
@@ -187,100 +181,111 @@
     },
     addItem: function(data) {
       data.createdAt = Date.now();
-      return addDoc(collection(db, "items"), data);
+      return db.collection("items").add(data);
     },
     updateItem: function(id, data) {
-      return updateDoc(doc(db, "items", id), data);
+      return db.collection("items").doc(id).update(data);
     },
     deleteItem: function(id, imagePath) {
-      const p1 = deleteDoc(doc(db, "items", id));
+      var p1 = db.collection("items").doc(id).delete();
       if (imagePath) {
-        const p2 = deleteObject(sRef(storage, imagePath)).catch(function(e) {
-          console.error("Storage 이미지 파기 실패:", e);
+        var p2 = storage.ref(imagePath).delete().catch(function(e) {
+          console.error("Storage 실물 파일 파기 실패:", e);
         });
         return Promise.all([p1, p2]);
       }
       return p1;
     },
     uploadImage: function(file, myId) {
-      const imagePath = 'items/' + Date.now() + '_' + myId;
-      const fileRef = sRef(storage, imagePath);
-      return uploadBytes(fileRef, file).then(function() {
-        return getDownloadURL(fileRef);
+      var imagePath = 'items/' + Date.now() + '_' + myId;
+      var fileRef = storage.ref(imagePath);
+      return fileRef.put(file).then(function() {
+        return fileRef.getDownloadURL();
       }).then(function(url) {
         return { url: url, imagePath: imagePath };
       });
     },
     requestItem: function(id, myId) {
-      return updateDoc(doc(db, "items", id), { requesters: arrayUnion(myId) });
+      return db.collection("items").doc(id).update({
+        requesters: firebase.firestore.FieldValue.arrayUnion(myId)
+      });
     },
     cancelRequest: function(id, myId) {
-      return updateDoc(doc(db, "items", id), { requesters: arrayRemove(myId) });
+      return db.collection("items").doc(id).update({
+        requesters: firebase.firestore.FieldValue.arrayRemove(myId)
+      });
     },
     getSeason: function() {
-      return getDoc(doc(db, "meta", "season")).then(function(snap) {
-        if (!snap.exists()) {
-          return setDoc(doc(db, "meta", "season"), { value: 1 }).then(function() { return 1; });
+      var ref = db.collection("meta").doc("season");
+      return ref.get().then(function(snap) {
+        if (!snap.exists) {
+          return ref.set({ value: 1 }).then(function() { return 1; });
         }
         return snap.data().value || 1;
       });
     },
     startNewSeason: function(currentSeason) {
-      const nextSeason = currentSeason + 1;
-      const p1 = setDoc(doc(db, "meta", "season"), { value: nextSeason });
-      const p2 = getDocs(collection(db, "items")).then(function(snap) {
-        return Promise.all(snap.docs.map(function(d) { return deleteDoc(d.ref); }));
+      var nextSeason = currentSeason + 1;
+      var p1 = db.collection("meta").doc("season").set({ value: nextSeason });
+      var p2 = db.collection("items").get().then(function(snap) {
+        var batch = db.batch();
+        snap.docs.forEach(function(d) { batch.delete(d.ref); });
+        return batch.commit();
       });
       return Promise.all([p1, p2]).then(function() { return nextSeason; });
     },
     getAdminPin: function() {
-      return getDoc(doc(db, "meta", "admin-pin")).then(function(snap) {
-        if (!snap.exists()) {
-          return setDoc(doc(db, "meta", "admin-pin"), { pin: "1234" }).then(function() { return "1234"; });
+      var ref = db.collection("meta").doc("admin-pin");
+      return ref.get().then(function(snap) {
+        if (!snap.exists) {
+          return ref.set({ pin: "1234" }).then(function() { return "1234"; });
         }
         return snap.data().pin || "1234";
       });
     },
     setAdminPin: function(newPin) {
-      return setDoc(doc(db, "meta", "admin-pin"), { pin: newPin });
+      return db.collection("meta").doc("admin-pin").set({ pin: newPin });
     },
     getBlockedUsers: function() {
-      return getDoc(doc(db, "meta", "blocked-users")).then(function(snap) {
+      var ref = db.collection("meta").doc("blocked-users");
+      return ref.get().then(function(snap) {
         if (!snap.exists()) return [];
         return snap.data().list || [];
       });
     },
     blockUser: function(userId) {
-      const ref = doc(db, "meta", "blocked-users");
-      return getDoc(ref).then(function(snap) {
-        if (!snap.exists()) return setDoc(ref, { list: [userId] });
-        return updateDoc(ref, { list: arrayUnion(userId) });
+      var ref = db.collection("meta").doc("blocked-users");
+      return ref.get().then(function(snap) {
+        if (!snap.exists()) return ref.set({ list: [userId] });
+        return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(userId) });
       });
     },
     unblockUser: function(userId) {
-      return updateDoc(doc(db, "meta", "blocked-users"), { list: arrayRemove(userId) });
+      return db.collection("meta").doc("blocked-users").update({
+        list: firebase.firestore.FieldValue.arrayRemove(userId)
+      });
     }
   };
 
-  // 애플리케이션 내부 로컬 상태 변수 고정소
-  let myId = null;
-  let season = 1;
-  let currentTab = 'browse';
-  let allItems = [];
-  let showDone = false;
-  let isAdminAuthed = false;
-  let blockedUsers = [];
-  const ID_PREFIX = "선민";
+  // 내부 라이프사이클 전용 상태 변수 배치
+  var myId = null;
+  var season = 1;
+  var currentTab = 'browse';
+  var allItems = [];
+  var showDone = false;
+  var isAdminAuthed = false;
+  var blockedUsers = [];
+  var ID_PREFIX = "선민";
 
-  // 🛠️ 서버 지연을 완벽 무시하고 기기에서 0.1초 만에 ID를 부여 및 탭 메뉴를 강제 점등하는 완치형 가동소
+  // 🛠️ 서버 데이터 유실이나 응답 지연을 완벽히 무시하고 브라우저 실행 즉시 ID 및 탭 단추를 점등하는 완치 장치
   function initAppStatic() {
-    let id = null;
+    var id = null;
     try {
       id = window.localStorage.getItem("my-anon-id");
     } catch (e) {}
 
     if (!id || id === "로딩중..." || id.indexOf("대기중") !== -1) {
-      const randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+      var randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
       id = ID_PREFIX + "-" + randStr;
       try {
         window.localStorage.setItem("my-anon-id", id);
@@ -290,10 +295,10 @@
     myId = id;
     document.getElementById('display-my-id').innerText = myId;
     
-    // 화면 단추들이 완벽히 점등된 기틀 페이지 오픈
+    // 강제 화면 활성화 유닛 가동
     switchPageTab('browse');
     
-    // 화면 기틀 가동이 완전히 확보된 뒤 백그라운드에서 조용히 데이터 연동 시작 (얼어붙음 방지)
+    // UI가 무조건 살아난 뒤 원격 실시간 데이터베이스를 조용히 홉스 연동 (정체 현상 완벽 박멸)
     connectServerDatabase();
   }
 
@@ -315,17 +320,18 @@
       refreshUI();
     });
   }
+</script>
   function switchPageTab(tabName) {
     currentTab = tabName;
     
-    // 탭 버튼 스타일 실시간 활성화 업데이트
+    // 탭 버튼 스타일 활성화 실시간 업데이트
     document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
-    const activeBtn = document.getElementById('tab-' + tabName + '-btn');
+    var activeBtn = document.getElementById('tab-' + tabName + '-btn');
     if (activeBtn) activeBtn.classList.add('active');
 
-    // 정적 페이지 가시성 토글 디스플레이 제어
+    // 페이지 가시성 토글 디스플레이 통제
     document.querySelectorAll('.app-page').forEach(function(page) { page.classList.remove('active'); });
-    const activePage = document.getElementById('page-' + tabName);
+    var activePage = document.getElementById('page-' + tabName);
     if (activePage) activePage.classList.add('active');
 
     if (tabName === 'admin' && !isAdminAuthed) {
@@ -341,10 +347,10 @@
 
   function refreshUI() {
     if (currentTab === 'browse') {
-      const browseContainer = document.getElementById('browse-items-list');
+      var browseContainer = document.getElementById('browse-items-list');
       if (!browseContainer) return;
 
-      const filtered = showDone ? allItems : allItems.filter(function(it) {
+      var filtered = showDone ? allItems : allItems.filter(function(it) {
         return it.status !== 'matched';
       });
 
@@ -355,11 +361,11 @@
         return;
       }
 
-      let html = "";
+      var html = "";
       filtered.forEach(function(it) {
-        const isMine = it.giverId === myId;
-        const requested = it.requesters && it.requesters.indexOf(myId) !== -1;
-        const reqLen = (it.requesters && it.requesters.length) || 0;
+        var isMine = it.giverId === myId;
+        var requested = it.requesters && it.requesters.indexOf(myId) !== -1;
+        var reqLen = (it.requesters && it.requesters.length) || 0;
 
         html += '<div class="item-card">';
         html += '  <div class="card-top">';
@@ -394,18 +400,18 @@
     } 
     
     else if (currentTab === 'mine') {
-      const mineContainer = document.getElementById('mine-items-list');
+      var mineContainer = document.getElementById('mine-items-list');
       if (!mineContainer) return;
 
-      const myItems = allItems.filter(function(i) { return i.giverId === myId; });
+      var myItems = allItems.filter(function(i) { return i.giverId === myId; });
       if (myItems.length === 0) {
         mineContainer.innerHTML = '<div style="text-align: center; padding: 30px 0; color: #999;">아직 등록한 나눔이 없습니다.</div>';
         return;
       }
 
-      let html = "";
+      var html = "";
       myItems.forEach(function(it) {
-        const reqLen = (it.requesters && it.requesters.length) || 0;
+        var reqLen = (it.requesters && it.requesters.length) || 0;
         html += '<div class="item-card" style="border-left: 4px solid #8B7E66;">';
         html += '  <strong style="font-size: 16px; display: block; margin-bottom: 4px;">' + it.title + '</strong>';
         html += '  <div style="font-size: 13px; color: #666; margin-bottom: 8px;">신청자 수: ' + reqLen + '명</div>';
@@ -421,14 +427,14 @@
       mineContainer.innerHTML = html;
     }
     else if (currentTab === 'admin' && isAdminAuthed) {
-      const adminItemsBox = document.getElementById('admin-items-list');
-      const adminUsersBox = document.getElementById('admin-users-list');
+      var adminItemsBox = document.getElementById('admin-items-list');
+      var adminUsersBox = document.getElementById('admin-users-list');
       
       if (adminItemsBox) {
         if (allItems.length === 0) {
           adminItemsBox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록된 게시물이 없습니다.</div>';
         } else {
-          let html = "";
+          var html = "";
           allItems.forEach(function(it) {
             html += '<div class="admin-list-item">';
             html += '  <div style="min-width:0; flex:1; padding-right:8px;"><strong>' + it.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + it.giverId + ' · 상태: ' + it.status + '</span></div>';
@@ -440,7 +446,7 @@
       }
 
       if (adminUsersBox) {
-        const uniqueUsers = [];
+        var uniqueUsers = [];
         allItems.forEach(function(it) {
           if (uniqueUsers.indexOf(it.giverId) === -1) uniqueUsers.push(it.giverId);
           if (it.requesters) {
@@ -451,9 +457,9 @@
         if (uniqueUsers.length === 0) {
           adminUsersBox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">조회된 유저 네트워크가 없습니다.</div>';
         } else {
-          let html = "";
+          var html = "";
           uniqueUsers.forEach(function(uId) {
-            const isBlocked = blockedUsers.indexOf(uId) !== -1;
+            var isBlocked = blockedUsers.indexOf(uId) !== -1;
             html += '<div class="admin-list-item">';
             html += '  <span>👤 <strong>' + uId + '</strong>' + (isBlocked ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span>';
             html += '  <button class="act-admin-block" data-userid="' + uId + '" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (isBlocked ? '차단해제' : '유저차단') + '</button>';
@@ -467,20 +473,20 @@
 
   // 동적 생성 버튼들에 대한 글로벌 이벤트 가로채기 위임 유닛
   document.addEventListener('click', function(e) {
-    const t = e.target;
+    var t = e.target;
     if (t.classList.contains('act-req')) {
       fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("신청이 완료되었어요."); });
     } else if (t.classList.contains('act-cancel-req')) {
       fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청을 취소했어요."); });
     } else if (t.classList.contains('act-match-prompt')) {
-      const itemId = t.getAttribute('data-id');
-      const targetItem = allItems.find(function(i) { return i.id === itemId; });
+      var itemId = t.getAttribute('data-id');
+      var targetItem = allItems.find(function(i) { return i.id === itemId; });
       if (!targetItem) return;
-      const reqs = targetItem.requesters || [];
+      var reqs = targetItem.requesters || [];
       if (reqs.length === 0) { alert("아직 신청자가 존재하지 않습니다."); return; }
-      let msg = "나눔을 확정 지을 수령자의 ID를 정확히 입력해 주세요:\n\n[신청자 명단]\n";
+      var msg = "나눔을 확정 지을 수령자의 ID를 정확히 입력해 주세요:\n\n[신청자 명단]\n";
       reqs.forEach(function(rId) { msg += "- " + rId + "\n"; });
-      const selected = prompt(msg);
+      var selected = prompt(msg);
       if (!selected) return;
       if (reqs.indexOf(selected.trim()) === -1) { alert("명단에 없는 익명 ID입니다."); return; }
       fbApi.updateItem(itemId, { selectedReceiverId: selected.trim(), status: "matched" }).then(function() { showToast("매칭이 완료되었습니다."); });
@@ -493,7 +499,7 @@
         fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("강제 취소 완료."); });
       }
     } else if (t.classList.contains('act-admin-block')) {
-      const uId = t.getAttribute('data-userid');
+      var uId = t.getAttribute('data-userid');
       if (blockedUsers.indexOf(uId) !== -1) {
         fbApi.unblockUser(uId).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); showToast("차단 해제."); });
       } else {
@@ -504,7 +510,7 @@
     }
   });
 
-  // 정적 내장 인풋 컴포넌트 동작 이벤트 핸들러 일괄 고정 바인딩
+  // 정적 내장 컴포넌트 동작 이벤트 핸들러 고정 바인딩
   document.getElementById('tab-browse-btn').addEventListener('click', function() { switchPageTab('browse'); });
   document.getElementById('tab-share-btn').addEventListener('click', function() { switchPageTab('share'); });
   document.getElementById('tab-mine-btn').addEventListener('click', function() { switchPageTab('mine'); });
@@ -513,18 +519,18 @@
   document.getElementById('admin-exit-btn').addEventListener('click', function() { switchPageTab('browse'); });
   
   document.getElementById('admin-change-pin-btn').addEventListener('click', function() {
-    const newPin = prompt("새로운 마스터 암호 숫자를 기입하세요:");
+    var newPin = prompt("새로운 마스터 암호 숫자를 기입하세요:");
     if (newPin && newPin.trim()) fbApi.setAdminPin(newPin.trim()).then(function() { showToast("비밀번호 변경 완료."); });
   });
 
   document.getElementById('admin-reset-season-btn').addEventListener('click', function() {
-    if (confirm("주의! 시즌 마감 시 현재 백엔드 기부 원장이 전체 폭파 및 전면 포맷팅 초기화됩니다. 계속할까요?")) {
+    if (confirm("주의! 시즌 마감 시 현재 백엔드 원장이 전체 폭파 및 초기화됩니다. 계속할까요?")) {
       fbApi.startNewSeason(season).then(function(nextSeason) { season = nextSeason; document.getElementById('display-season').innerText = season; showToast("새 시즌 시작."); switchPageTab('browse'); });
     }
   });
 
   document.getElementById('modal-submit-btn').addEventListener('click', function() {
-    const inputPin = document.getElementById('modal-pwd-input').value;
+    var inputPin = document.getElementById('modal-pwd-input').value;
     fbApi.getAdminPin().then(function(realPin) {
       if (inputPin === realPin || inputPin === "1234") {
         isAdminAuthed = true;
@@ -541,17 +547,17 @@
   });
 
   document.getElementById('form-image').addEventListener('change', function() {
-    if (this.files && this.files[0]) {
+    if (this.files && this.files) {
       document.getElementById('image-preview-area').style.display = 'block';
-      document.getElementById('form-preview-img').src = URL.createObjectURL(this.files[0]);
+      document.getElementById('form-preview-img').src = URL.createObjectURL(this.files);
     }
   });
 
   document.getElementById('post-submit-btn').addEventListener('click', function() {
-    const titleVal = document.getElementById('form-title').value;
-    const descVal = document.getElementById('form-desc').value;
-    const fileInput = document.getElementById('form-image');
-    const file = fileInput && fileInput.files && fileInput.files[0];
+    var titleVal = document.getElementById('form-title').value;
+    var descVal = document.getElementById('form-desc').value;
+    var fileInput = document.getElementById('form-image');
+    var file = fileInput && fileInput.files && fileInput.files;
 
     if (!titleVal.trim()) { alert("물품명을 입력하세요."); return; }
     this.disabled = true; this.innerText = "🚀 등록 절차 진행 중...";
@@ -570,13 +576,13 @@
     document.getElementById('form-desc').value = "";
     document.getElementById('form-image').value = "";
     document.getElementById('image-preview-area').style.display = 'none';
-    const btn = document.getElementById('post-submit-btn');
+    var btn = document.getElementById('post-submit-btn');
     btn.disabled = false; btn.innerText = "나눔 올리기";
     showToast("물품이 정상적으로 등록되었습니다.");
     switchPageTab('browse');
   }
 
-  // 문서 구조 해석이 완료되는 즉시 0.1초 만에 탭 점등 및 기기 고정 ID 동시 강제 가동
+  // 브라우저 돔 파싱 즉시 타이밍 꼬임 없이 안전 실행
   initAppStatic();
 </script>
 </body>

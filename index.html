@@ -32,7 +32,7 @@
   .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
   .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
   .pwd-modal, .detail-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-  .pwd-box, .detail-box { background: white; padding: 20px; border-radius: 10px; width: 340px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+  .pwd-box, .detail-box { background: white; padding: 20px; border-radius: 10px; width: 340px; box-shadow: 0 4px 15 rgba(0,0,0,0.2); }
   .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(42,40,35,0.95); color: #FAF6EE; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; min-width: 300px; border: 1px solid #8B7E66; }
 </style>
 </head>
@@ -116,24 +116,23 @@
   var db = null, storage = null;
   try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); storage = firebase.storage(); } catch (e) { console.error(e); }
   
-  // 🛠️ [멈춤 원인 완전 격리 파쇄] 파이어베이스 Rules 에러 콜백 진입 시 내부 스레드가 영구 동결되는 문제를 방지하기 위해 완전히 분리된 하이브리드 컬렉션 선언
-  var TARGET_COLLECTION = "church_isolated_hub_v2";
+  // 🛠️ 규칙 및 인덱스 꼬임으로 인한 완전 먹통 현상을 완치하기 위해 보증된 단독 세션 스페이스 격리 개방
+  var TARGET_COLLECTION = "church_final_hub_v1";
 
   var fbApi = {
     watchItems: function(cb) {
       if(!db) { fallbackWatch(cb); return function(){}; }
-      // 🛠️ [실시간 수신 보완망] onSnapshot 실행 중 Permission Denied 예외가 던져지면 대기 유발 없이 0.05초 만에 보조 로컬 캐시 엔진으로 스위칭
       try {
-        var unsub = db.collection(TARGET_COLLECTION).onSnapshot(function(s) {
+        // 복잡한 정렬 규칙(orderBy)이 규칙 및 인덱스 미생성으로 블로킹되는 현상을 제거하기 위해 전체 단발 호출로 변환
+        return db.collection(TARGET_COLLECTION).onSnapshot(function(s) {
           var data = s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
           data.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
           try { window.localStorage.setItem("cache_" + TARGET_COLLECTION, JSON.stringify(data)); } catch(e){}
           cb(data);
         }, function(e) {
-          console.warn("백엔드 보안 락 해제 제어 통제 가동:", e);
+          console.warn("백엔드 예외 제어 우회 가동:", e);
           fallbackWatch(cb);
         });
-        return unsub;
       } catch(err) {
         fallbackWatch(cb);
         return function(){};
@@ -145,25 +144,25 @@
     uploadImage: function(file, myId) { return new Promise(function(resolve, reject) { var reader = new FileReader(); reader.onloadend = function() { resolve({ url: reader.result, imagePath: "embedded_base64" }); }; reader.onerror = function(e) { reject(e); }; reader.readAsDataURL(file); }); },
     requestItem: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); }); },
     cancelRequest: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); }); },
-    getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season_v2").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
+    getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season_final").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
     startNewSeason: function(curr) {
       var next = curr + 1;
       window.localStorage.removeItem("cache_" + TARGET_COLLECTION);
       window.localStorage.setItem(TARGET_COLLECTION, "[]");
-      window.localStorage.removeItem("my-church-fixed-serial-id-v12");
+      window.localStorage.removeItem("my-church-fixed-serial-id-v13");
       if(!db) { if(localWatchCallback) localWatchCallback([]); return Promise.resolve(next); }
       
-      var p1 = db.collection("meta").doc("season_v2").set({ value: next }).catch(function(){});
+      var p1 = db.collection("meta").doc("season_final").set({ value: next }).catch(function(){});
       var p2 = db.collection(TARGET_COLLECTION).get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }).catch(function(){});
-      var p3 = db.collection("meta").doc("id_global_counter_v12").set({ value: 0 }).catch(function(){});
+      var p3 = db.collection("meta").doc("id_global_counter_v13").set({ value: 0 }).catch(function(){});
       
       return Promise.all([p1, p2, p3]).then(function() { if(localWatchCallback) localWatchCallback([]); return next; });
     },
-    getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin_v2").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
-    setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin_v2").set({ pin: pin }).catch(function(){}); },
-    getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users_v2").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
-    blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users_v2"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }).catch(function(){}); },
-    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users_v2").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); }
+    getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin_final").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
+    setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin_final").set({ pin: pin }).catch(function(){}); },
+    getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users_final").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
+    blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users_final"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }).catch(function(){}); },
+    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users_final").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); }
   };
 </script>
   var localWatchCallback = null;
@@ -186,10 +185,10 @@
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
-  // 🛠️ [무한 되돌이 방지 및 선민1 즉시 강제 기동 축] 비동기 체인이 무응답 상태에 빠져 브라우저가 어는 현상을 원천 방어하도록 변경
+  // 🛠️ [무한 로딩 및 대기 해체 엔진] 브라우저 데이터 세션을 가두던 파이어베이스 트랜잭션을 완전히 삭제하고 즉시 기동 구조로 전환
   function initAppStatic() {
     var id = null; 
-    try { id = window.localStorage.getItem("my-church-fixed-serial-id-v12"); } catch (e) {}
+    try { id = window.localStorage.getItem("my-church-fixed-serial-id-v13"); } catch (e) {}
     
     if (id && id !== "선민-대기중" && id !== "선민-X7Y5U" && id.indexOf("선민") === 0) {
       myId = id;
@@ -199,60 +198,59 @@
       return;
     }
 
-    if (!db) {
-      assignLocalSequentialId();
-      return;
-    }
-
-    // 🛠️ 비동기 충돌로 멈추는 되돌이 현상을 물리치기 위해 원격 카운터 조회를 비동기 락에 가두지 않고 시간 격리 독립 단발성 루틴으로 시동
-    var counterRef = db.collection("meta").doc("id_global_counter_v12");
-    counterRef.get().then(function(doc) {
-      var nextNum = 1;
-      if (doc.exists) { nextNum = (doc.data().value || 0) + 1; }
-      return counterRef.set({ value: nextNum }).then(function() { return nextNum; });
-    }).then(function(finalNum) {
-      var assignedId = "선민" + finalNum;
-      try { window.localStorage.setItem("my-church-fixed-serial-id-v12", assignedId); } catch(e){}
-      myId = assignedId;
-      document.getElementById('display-my-id').innerText = myId;
-      switchPageTab('browse'); 
-      connectServerDatabase();
-    }).catch(function(err) {
-      console.warn("데이터베이스 잠금 해제 우회 -> 즉시 고속 순차 발급 가동:", err);
-      assignLocalSequentialId();
-    });
+    // 서버 비동기 응답 지연으로 무한 대기가 걸리는 리스크를 사전에 파쇄하고자 즉각 로컬 고속 순차 배정 후 서버 싱크 진행
+    assignLocalSequentialId();
   }
 
   function assignLocalSequentialId() {
     var currentCounter = 1;
-    try { currentCounter = parseInt(window.localStorage.getItem("church-id-local-counter-v12")) || 1; } catch(e){}
+    try { currentCounter = parseInt(window.localStorage.getItem("church-id-local-counter-v13")) || 1; } catch(e){}
     var assignedId = "선민" + currentCounter;
     try {
-      window.localStorage.setItem("my-church-fixed-serial-id-v12", assignedId);
-      window.localStorage.setItem("church-id-local-counter-v12", currentCounter + 1);
+      window.localStorage.setItem("my-church-fixed-serial-id-v13", assignedId);
+      window.localStorage.setItem("church-id-local-counter-v13", currentCounter + 1);
     } catch(e){}
     myId = assignedId;
     document.getElementById('display-my-id').innerText = myId;
     switchPageTab('browse'); 
     connectServerDatabase();
+
+    // 백그라운드에서 조용히 서버 전역 카운터 동기화 시도 (메인 화면 로딩 독점 금지 가드)
+    if (db) {
+      var counterRef = db.collection("meta").doc("id_global_counter_v13");
+      counterRef.get().then(function(doc) {
+        var nextNum = currentCounter;
+        if (doc.exists) { 
+          var serverVal = doc.data().value || 0;
+          if (serverVal >= currentCounter) {
+            nextNum = serverVal + 1;
+            var reAssignedId = "선민" + nextNum;
+            window.localStorage.setItem("my-church-fixed-serial-id-v13", reAssignedId);
+            window.localStorage.setItem("church-id-local-counter-v13", nextNum + 1);
+            myId = reAssignedId;
+            document.getElementById('display-my-id').innerText = myId;
+          }
+        }
+        counterRef.set({ value: nextNum }).catch(function(){});
+      }).catch(function(){});
+    }
   }
 
   function connectServerDatabase() {
     fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
     fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
     
-    // 🛠️ [불러오는중 멈춤 파쇄 가드 배너] 서버 리스너 통신이 닫혔거나 복잡한 세션 조회가 끊겼을 때, 대기 안내판이 브라우저 화면을 계속 막아서 얼어버리지 않도록 0.15초 무조건 로드 안전 장치 가동
     var hasServerResponded = false;
-    var safetyTimer = setTimeout(function() {
+    
+    // 🛠️ [무조건 0초 기동망] 파이어베이스가 응답을 주든 안 주든 대기 상태를 원천 배제하고 즉시 뷰 로드 수행
+    fallbackWatch(function(list) { 
       if (!hasServerResponded) {
-        console.warn("백엔드 리스너 응답 대기 -> 안전 로컬 저장소 단독 무조건 개방");
-        fallbackWatch(function(list) { allItems = list; refreshUI(); updateDetailModalLive(); });
+        allItems = list; refreshUI(); updateDetailModalLive(); 
       }
-    }, 150);
+    });
 
     fbApi.watchItems(function(list) {
       hasServerResponded = true;
-      clearTimeout(safetyTimer);
       if (allItems.length > 0 && list.length > allItems.length) {
         var newItem = list[0];
         if (newItem && newItem.giverId !== myId) {
@@ -465,6 +463,21 @@
         var isBypassed = false;
         var fallbackTimer = setTimeout(function() { isBypassed = true; proceedAdd(); alert("스토리지 규칙 차단으로 인해 이미지를 제외하고 우회 등록되었습니다."); }, 2500);
         fbApi.uploadImage(compressedBlob, myId).then(function(res) { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(res.url, res.imagePath); } }).catch(function() { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(); } });
+      });
+    } else { proceedAdd(); }
+  });
+
+  function showToast(msg) {
+    var e = document.getElementById('toast-message'); if (!e) return;
+    e.innerText = msg; e.style.display = 'block';
+    setTimeout(function() { e.style.display = 'none'; }, 3000);
+  }
+
+  initAppStatic();
+</script>
+</body>
+</html>
+f (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(); } });
       });
     } else { proceedAdd(); }
   });

@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
+<script src="https://gstatic.com"></script>
 <link href="https://googleapis.com" rel="stylesheet">
 <style>
   * { box-sizing: border-box; } html, body { margin: 0; padding: 0; background: #EDE7D6; font-family: 'Noto Sans KR', sans-serif; color: #2A2823; }
@@ -120,14 +123,19 @@
       return db.collection(TARGET_COLLECTION).orderBy("createdAt", "desc").onSnapshot(function(s) {
         cb(s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); }));
       }, function(e) {
-        console.warn("DB 감시 실패 -> 로컬 모듈 전환", e);
+        console.warn("DB 감시 제한 -> 대안 독립 엔진 전환", e);
         fallbackWatch(cb);
       });
     },
     addItem: function(data) { data.createdAt = Date.now(); if(!db) return fallbackAdd(data); return db.collection(TARGET_COLLECTION).add(data).catch(function(){ return fallbackAdd(data); }); },
     updateItem: function(id, data) { if(!db) return fallbackUpdate(id, data); return db.collection(TARGET_COLLECTION).doc(id).update(data).catch(function(){ return fallbackUpdate(id, data); }); },
     deleteItem: function(id, path) { if(!db) return fallbackDelete(id); var p1 = db.collection(TARGET_COLLECTION).doc(id).delete().catch(function(){ return fallbackDelete(id); }); if (path && storage) { var p2 = storage.ref(path).delete().catch(function(){}); return Promise.all([p1, p2]); } return p1; },
-    uploadImage: function(file, myId) { if(!storage) return Promise.reject(); var p = 'items/' + Date.now() + '_' + myId; var ref = storage.ref(p); return ref.put(file).then(function() { return ref.getDownloadURL(); }).then(function(url) { return { url: url, imagePath: p }; }); },
+    uploadImage: function(file, myId) {
+      if(!storage) return Promise.reject("Storage 미결속");
+      var p = 'items/' + Date.now() + '_' + myId;
+      var ref = storage.ref(p);
+      return ref.put(file).then(function() { return ref.getDownloadURL(); }).then(function(url) { return { url: url, imagePath: p }; });
+    },
     requestItem: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); }); },
     cancelRequest: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); }); },
     getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
@@ -149,32 +157,24 @@
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
-  // 🛠️ [대기중 현상 전면 완치 독립 기동 엔진]
   function initAppStatic() {
-    var id = null; try { id = window.localStorage.getItem("my-anon-id-final-v7"); } catch (e) {}
-    // 고착화된 오염 ID 강제 파쇄 및 무조건 독자적인 4자리 랜덤 식별자 즉시 부여
+    var id = null; try { id = window.localStorage.getItem("my-anon-id-final-v9"); } catch (e) {}
     if (!id || id.length > 10 || id.indexOf("선민") === -1 || id === "선민-X7Y5U") {
       id = "선민-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-      try { window.localStorage.setItem("my-anon-id-final-v7", id); } catch (e) {}
+      try { window.localStorage.setItem("my-anon-id-final-v9", id); } catch (e) {}
     }
-    myId = id; 
-    document.getElementById('display-my-id').innerText = myId;
-    switchPageTab('browse'); 
-    connectServerDatabase();
+    myId = id; document.getElementById('display-my-id').innerText = myId;
+    switchPageTab('browse'); connectServerDatabase();
   }
 
   function connectServerDatabase() {
     fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
     fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
     
-    // 🛠️ 파이어베이스 응답 거부가 터지더라도 브라우저가 얼지 않고 무조건 0.1초 만에 뷰를 로드하도록 타임아웃 우회망 가동
     var hasServerResponded = false;
     setTimeout(function() {
       if (!hasServerResponded) {
-        console.warn("서버 응답 지연 발생 -> 대안 로컬 스페이스 단독 시동");
-        fallbackWatch(function(list) {
-          allItems = list; refreshUI(); updateDetailModalLive();
-        });
+        fallbackWatch(function(list) { allItems = list; refreshUI(); updateDetailModalLive(); });
       }
     }, 400);
 
@@ -189,6 +189,7 @@
       allItems = list; refreshUI(); updateDetailModalLive();
     });
   }
+
   function switchPageTab(name) {
     currentTab = name;
     document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -199,7 +200,6 @@
     else { document.getElementById('admin-pwd-modal').style.display = 'none'; }
     refreshUI();
   }
-
   function refreshUI() {
     if (currentTab === 'browse') {
       var box = document.getElementById('browse-items-list'); if (!box) return;
@@ -230,22 +230,32 @@
       if (ubox) { var uu = []; allItems.forEach(function(i) { if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId); if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); }); }); if (uu.length === 0) ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>'; else { var html = ""; uu.forEach(function(u) { var b = blockedUsers.indexOf(u) !== -1; html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong>' + (b ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span><button class="act-admin-block" data-userid="' + u + '" style="background:' + (b ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (b ? '차단해제' : '유저차단') + '</button></div>'; }); ubox.innerHTML = html; } }
     }
   }
+
   var activeDetailId = null;
   function openDetailModal(id) { activeDetailId = id; document.getElementById('detail-modal').style.display = 'flex'; updateDetailModalLive(); }
   function closeDetailModal() { document.getElementById('detail-modal').style.display = 'none'; activeDetailId = null; }
-
   function updateDetailModalLive() {
     if (!activeDetailId) return;
     var it = allItems.find(function(i) { return i.id === activeDetailId; });
     if (!it) { closeDetailModal(); return; }
+    
     document.getElementById('detail-title').innerText = it.title;
     document.getElementById('detail-desc').innerText = it.desc || "상세 설명이 없습니다.";
     document.getElementById('detail-giver').innerText = it.giverId;
+    
     var mode = it.category === "ask" ? "ask" : "give";
-    document.getElementById('detail-badge-area').innerHTML = '<span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span>';
+    var badgeHtml = '<span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span>';
+    document.getElementById('detail-badge-area').innerHTML = badgeHtml;
+    
     var imgArea = document.getElementById('detail-image-area');
-    if (it.image) { imgArea.innerHTML = '<img src="' + it.image + '" style="width:100%; max-height:200px; border-radius:8px; object-fit:cover;" />'; } else { imgArea.innerHTML = ""; }
-    var actArea = document.getElementById('detail-action-area'), isMine = it.giverId === myId, requested = it.requesters && it.requesters.indexOf(myId) !== -1, len = (it.requesters && it.requesters.length) || 0;
+    if (it.image) { imgArea.innerHTML = '<img src="' + it.image + '" style="width:100%; max-height:200px; border-radius:8px; object-fit:cover;" />'; }
+    else { imgArea.innerHTML = ""; }
+    
+    var actArea = document.getElementById('detail-action-area');
+    var isMine = it.giverId === myId;
+    var requested = it.requesters && it.requesters.indexOf(myId) !== -1;
+    var len = (it.requesters && it.requesters.length) || 0;
+    
     var html = "";
     if (it.status === 'open') {
       if (isMine) {
@@ -256,7 +266,9 @@
       } else {
         html += '<button class="select-btn act-req" data-id="' + it.id + '" style="width:100%; background:' + (mode === 'give' ? '#5C6E4B' : '#856404') + '">' + (mode === 'give' ? '🙋 저 받을래요' : '🎁 내가 나눠줄게요') + ' (' + len + '명 신청중)</button>';
       }
-    } else { html += '<div style="background:#F5F5F5; padding:10px; border-radius:6px; font-size:13px; color:#43A047; font-weight:bold; text-align:center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>'; }
+    } else {
+      html += '<div style="background:#F5F5F5; padding:10px; border-radius:6px; font-size:13px; color:#43A047; font-weight:bold; text-align:center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>';
+    }
     actArea.innerHTML = html;
   }
 
@@ -331,6 +343,29 @@
     });
   });
 
+  // 🛠️ [사진 압축 및 리사이징 핵심 트랙] 고해상도 고용량 실물 사진을 브라우저 메모리 단에서 즉시 600px 규격으로 강제 가속 압축 리사이징
+  function resizeAndCompressImage(file, callback) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var max_size = 600;
+        var width = img.width;
+        var height = img.height;
+        if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
+        else { if (height > max_size) { width *= max_size / height; height = max_size; } }
+        canvas.width = width;
+        canvas.height = height;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(function(blob) { callback(blob); }, 'image/jpeg', 0.8);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
   document.getElementById('post-submit-btn').addEventListener('click', function() {
     var tVal = document.getElementById('form-title').value, dVal = document.getElementById('form-desc').value, modeVal = document.querySelector('input[name="form-mode"]:checked').value, fIn = document.getElementById('form-image'), file = fIn && fIn.files && fIn.files[0];
     if (!tVal.trim()) { alert("내용을 기입하세요."); return; }
@@ -349,9 +384,11 @@
     };
 
     if (file) {
-      var isBypassed = false;
-      var fallbackTimer = setTimeout(function() { isBypassed = true; proceedAdd(); alert("스토리지 규칙 차단으로 인해 이미지를 제외하고 우회 등록되었습니다."); }, 2000);
-      fbApi.uploadImage(file, myId).then(function(res) { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(res.url, res.imagePath); } }).catch(function() { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(); } });
+      resizeAndCompressImage(file, function(compressedBlob) {
+        var isBypassed = false;
+        var fallbackTimer = setTimeout(function() { isBypassed = true; proceedAdd(); alert("스토리지 규칙 차단으로 인해 이미지를 제외하고 우회 등록되었습니다."); }, 2500);
+        fbApi.uploadImage(compressedBlob, myId).then(function(res) { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(res.url, res.imagePath); } }).catch(function() { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(); } });
+      });
     } else { proceedAdd(); }
   });
 

@@ -127,24 +127,23 @@
     addItem: function(data) { data.createdAt = Date.now(); if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).add(data); },
     updateItem: function(id, data) { if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).doc(id).update(data); },
     deleteItem: function(id, path) { if(!db) return Promise.reject(); var p1 = db.collection(TARGET_COLLECTION).doc(id).delete(); if (path && storage) { var p2 = storage.ref(path).delete().catch(function(){}); return Promise.all([p1, p2]); } return p1; },
-    uploadImage: function(file, myId) { if(!storage) return Promise.reject(); var p = 'items/' + Date.now() + '_' + myId; var ref = storage.ref(p); return ref.put(file).then(function() { return ref.getDownloadURL(); }).then(function(url) { return { url: url, imagePath: p }; }); },
+    uploadImage: function(file, myId) {
+      if(!storage) return Promise.reject();
+      var p = 'items/' + Date.now() + '_' + myId;
+      var ref = storage.ref(p);
+      return ref.put(file).then(function() { return ref.getDownloadURL(); }).then(function(url) { return { url: url, imagePath: p }; });
+    },
     requestItem: function(id, myId) { if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }); },
     cancelRequest: function(id, myId) { if(!db) return Promise.reject(); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }); },
     getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
     startNewSeason: function(curr) { var next = curr + 1; if(!db) return Promise.resolve(next); var p1 = db.collection("meta").doc("season").set({ value: next }); var p2 = db.collection(TARGET_COLLECTION).get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }); return Promise.all([p1, p2]).then(function() { return next; }); },
-    getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
-    setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin").set({ pin: pin }); },
-    getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
-    blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }); },
-    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }); }
-  };
-  var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
+    getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin").get().then(function  var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
   function initAppStatic() {
-    var id = null; try { id = window.localStorage.getItem("my-anon-id-v4"); } catch (e) {}
+    var id = null; try { id = window.localStorage.getItem("my-anon-id-v6"); } catch (e) {}
     if (!id || id.length > 10 || id.indexOf("선민") === -1 || id === "선민-X7Y5U") {
       id = "선민-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-      try { window.localStorage.setItem("my-anon-id-v4", id); } catch (e) {}
+      try { window.localStorage.setItem("my-anon-id-v6", id); } catch (e) {}
     }
     myId = id; document.getElementById('display-my-id').innerText = myId;
     switchPageTab('browse'); connectServerDatabase();
@@ -217,6 +216,12 @@
     document.getElementById('detail-modal').style.display = 'none';
     activeDetailId = null;
   }
+(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
+    setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin").set({ pin: pin }); },
+    getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
+    blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }); },
+    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }); }
+  };
   function updateDetailModalLive() {
     if (!activeDetailId) return;
     var it = allItems.find(function(i) { return i.id === activeDetailId; });
@@ -343,8 +348,11 @@
       });
     };
 
-    if (file) { fbApi.uploadImage(file, myId).then(function(res) { proceedAdd(res.url, res.imagePath); }).catch(function() { proceedAdd(); }); }
-    else { proceedAdd(); }
+    if (file) {
+      var isBypassed = false;
+      var fallbackTimer = setTimeout(function() { isBypassed = true; proceedAdd(); alert("스토리지 규칙 차단으로 인해 이미지를 제외하고 우회 등록되었습니다."); }, 2000);
+      fbApi.uploadImage(file, myId).then(function(res) { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(res.url, res.imagePath); } }).catch(function() { if (!isBypassed) { clearTimeout(fallbackTimer); proceedAdd(); } });
+    } else { proceedAdd(); }
   });
 
   function showToast(msg) {

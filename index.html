@@ -1,8 +1,8 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (로컬 CORS 정책 및 자폭 오타 전면 완전 완치판)
+  나눔의 자리 - 교회 나눔 웹앱 (자폭 오타 전면 완전 완치 및 탭 즉시 활성화판)
   
   사용 방법:
-  1부부터 4부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+  1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -267,7 +267,7 @@
     }
   };
 
-  // 내부 라이프사이클 전용 상태 변수 배치
+  // 애플리케이션 내부 로컬 상태 변수 고정소
   var myId = null;
   var season = 1;
   var currentTab = 'browse';
@@ -277,7 +277,7 @@
   var blockedUsers = [];
   var ID_PREFIX = "선민";
 
-  // 🛠️ 서버 데이터 유실이나 응답 지연을 완벽히 무시하고 브라우저 실행 즉시 ID 및 탭 단추를 점등하는 완치 장치
+  // 🛠️ 서버 지연을 완벽 무시하고 기기에서 0.1초 만에 ID를 부여 및 탭 메뉴를 강제 점등하는 완치형 가동소
   function initAppStatic() {
     var id = null;
     try {
@@ -295,10 +295,10 @@
     myId = id;
     document.getElementById('display-my-id').innerText = myId;
     
-    // 강제 화면 활성화 유닛 가동
+    // 화면 단추들이 완벽히 점등된 기틀 페이지 오픈
     switchPageTab('browse');
     
-    // UI가 무조건 살아난 뒤 원격 실시간 데이터베이스를 조용히 홉스 연동 (정체 현상 완벽 박멸)
+    // 화면 기틀 가동이 완전히 확보된 뒤 백그라운드에서 조용히 데이터 연동 시작 (얼어붙음 방지)
     connectServerDatabase();
   }
 
@@ -320,7 +320,6 @@
       refreshUI();
     });
   }
-</script>
   function switchPageTab(tabName) {
     currentTab = tabName;
     

@@ -2,7 +2,7 @@
   나눔의 자리 - 교회 나눔 웹앱 (로컬 캐시 파쇄 · 실시간 크로스 기기 동기화 완전 완치판)
   
   사용 방법:
-  1부부터 7부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+  1부부터 9부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -15,7 +15,7 @@
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <link rel="preconnect" href="https://googleapis.com">
-<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght=500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://googleapis.com/css2 family=Noto+Serif+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #EDE7D6; }
@@ -32,7 +32,6 @@
   .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
   .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
   .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
-  
   .content-area { padding: 20px 16px; }
   .app-page { display: none; }
   .app-page.active { display: block; }
@@ -90,7 +89,6 @@
         <div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 나눔 및 요청 데이터를 불러오는 중입니다...</div>
       </div>
     </div>
-
     <!-- 2. 글쓰기 (나눔/요청) 등록 페이지 구역 -->
     <div id="page-share" class="app-page">
       <div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">
@@ -130,7 +128,6 @@
       <h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 글 관리</h3>
       <div id="mine-items-list"></div>
     </div>
-
     <!-- 4. 최고 권한 원격 운영 관리센터 구역 -->
     <div id="page-admin" class="app-page">
       <div class="admin-panel-box">
@@ -167,6 +164,7 @@
 </div>
 
 <div id="toast-message" class="toast"></div>
+
 <!-- 글로벌 표준 비모듈 스크립트 연결을 통한 안심 제어망 가동 -->
 <script>
   // 파이어베이스 프로젝트 실시간 원본 서버 주소 완전 복원
@@ -194,7 +192,7 @@
   var TARGET_COLLECTION = "items";
 
   var fbApi = {
-    // 🛠️ 컴퓨터-스마트폰 간의 전 성도 동시 공유를 위해 실제 파이어베이스 스냅샷 리스너 전면 복원
+    // 🛠️ 컴퓨터-스마트폰 간의 실시간 공유를 위해 실제 파이어베이스 스냅샷 리스너 복원
     watchItems: function(cb) {
       if (!db) return function(){};
       return db.collection(TARGET_COLLECTION).orderBy("createdAt", "desc").onSnapshot(function(snap) {
@@ -305,7 +303,7 @@
     }
   };
 
-  // 내부 상태 관리 상태 변수소
+  // 내부 상태 관리 제어 변수 고정 구역
   var myId = null;
   var season = 1;
   var currentTab = 'browse';
@@ -428,7 +426,6 @@
 
         html += '  <div style="font-size: 12px; color: #999; margin-bottom: 8px;">작성자: ' + it.giverId + '</div>';
         html += '  <div style="margin-top: 10px;">';
-        
         if (it.status === 'open') {
           if (isMine) {
             html += '    <div style="font-size: 12px; color: #A39C8C; text-align: center; background: #F9F9F9; padding: 8px; border-radius: 6px;">내가 등록한 글입니다.</div>';
@@ -447,7 +444,8 @@
         html += '  </div></div>';
       });
       browseContainer.innerHTML = html;
-    }
+    } 
+    
     else if (currentTab === 'mine') {
       var mineContainer = document.getElementById('mine-items-list');
       if (!mineContainer) return;
@@ -526,7 +524,7 @@
   document.getElementById('admin-gate-btn').addEventListener('click', function() { switchPageTab('admin'); });
   document.getElementById('toggle-done-btn').addEventListener('click', function() { showDone = !showDone; refreshUI(); });
   document.getElementById('admin-exit-btn').addEventListener('click', function() { switchPageTab('browse'); });
-
+  
   document.getElementById('admin-change-pin-btn').addEventListener('click', function() {
     var newPin = prompt("새로운 마스터 암호 숫자를 기입하세요:");
     if (newPin && newPin.trim()) fbApi.setAdminPin(newPin.trim()).then(function() { showToast("비밀번호 변경 완료."); });
@@ -645,4 +643,6 @@
   initAppStatic();
 </script>
 </body>
+</html>
+
 </html>

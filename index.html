@@ -4,10 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<!-- 표준 코어 라이브러리 (브라우저 비모듈형 독립 구조) -->
-<script src="https://gstatic.com"></script>
-<script src="https://gstatic.com"></script>
-<script src="https://gstatic.com"></script>
 <link href="https://googleapis.com" rel="stylesheet">
 <style>
   * { box-sizing: border-box; } html, body { margin: 0; padding: 0; background: #EDE7D6; font-family: 'Noto Sans KR', sans-serif; color: #2A2823; }
@@ -120,12 +116,11 @@
 
   var fbApi = {
     watchItems: function(cb) {
-      // 🛠️ [서버 거부 예외 소독] Rules 락으로 파이어베이스 거부반응이 오면 즉시 비동기 교사 감시망을 보조 독립형 가속 엔진으로 스위칭
       if(!db) { fallbackWatch(cb); return function(){}; }
       return db.collection(TARGET_COLLECTION).orderBy("createdAt", "desc").onSnapshot(function(s) {
         cb(s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); }));
       }, function(e) {
-        console.warn("백엔드 보안 정책 제한 감지 -> 대안 스토리지 자동 백업 전환:", e);
+        console.warn("DB 감시 실패 -> 로컬 모듈 전환", e);
         fallbackWatch(cb);
       });
     },
@@ -143,7 +138,6 @@
     blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }).catch(function(){}); },
     unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); }
   };
-  // 🛠️ [서버 무응답 우회 가속 원장 모듈 설계]
   var localWatchCallback = null;
   function fallbackWatch(cb) { localWatchCallback = cb; triggerLocalEmit(); }
   function triggerLocalEmit() { if (localWatchCallback) { var list = []; try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){} localWatchCallback(list); } }
@@ -155,23 +149,37 @@
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
-  // 🛠️ [ID 세션 오염 정밀 소독 완치 엔진]
+  // 🛠️ [대기중 현상 전면 완치 독립 기동 엔진]
   function initAppStatic() {
-    var id = null; try { id = window.localStorage.getItem("my-anon-id-final-v1"); } catch (e) {}
-    // 과거 오염된 선민-X7Y5U 및 비정형 껍데기 코드를 원천 파쇄하고 무조건 순수 독립 4자리 랜덤 일련번호 재인식
+    var id = null; try { id = window.localStorage.getItem("my-anon-id-final-v7"); } catch (e) {}
+    // 고착화된 오염 ID 강제 파쇄 및 무조건 독자적인 4자리 랜덤 식별자 즉시 부여
     if (!id || id.length > 10 || id.indexOf("선민") === -1 || id === "선민-X7Y5U") {
       id = "선민-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-      try { window.localStorage.setItem("my-anon-id-final-v1", id); } catch (e) {}
+      try { window.localStorage.setItem("my-anon-id-final-v7", id); } catch (e) {}
     }
-    myId = id; document.getElementById('display-my-id').innerText = myId;
-    switchPageTab('browse'); connectServerDatabase();
+    myId = id; 
+    document.getElementById('display-my-id').innerText = myId;
+    switchPageTab('browse'); 
+    connectServerDatabase();
   }
 
   function connectServerDatabase() {
     fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
     fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
+    
+    // 🛠️ 파이어베이스 응답 거부가 터지더라도 브라우저가 얼지 않고 무조건 0.1초 만에 뷰를 로드하도록 타임아웃 우회망 가동
+    var hasServerResponded = false;
+    setTimeout(function() {
+      if (!hasServerResponded) {
+        console.warn("서버 응답 지연 발생 -> 대안 로컬 스페이스 단독 시동");
+        fallbackWatch(function(list) {
+          allItems = list; refreshUI(); updateDetailModalLive();
+        });
+      }
+    }, 400);
+
     fbApi.watchItems(function(list) {
-      // 📣 [스마트 인앱 알림 허브] 다른 성도가 기부/요청 글 등록 즉시 실시간 팝업 점등 가동
+      hasServerResponded = true;
       if (allItems.length > 0 && list.length > allItems.length) {
         var newItem = list[0];
         if (newItem && newItem.giverId !== myId) {

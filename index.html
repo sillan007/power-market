@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (서버 거부 락 완전 타파 · 탭 및 ID 즉시 강제 활성화판)
+  나눔의 자리 - 교회 나눔 웹앱 (참조 에러 및 서버 락 영구 박멸 · 탭 및 ID 즉시 강제 활성화판)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -10,12 +10,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<!-- 파이어베이스 호환성 표준 스크립트 CDN 결속 (CORS 로컬 차단 무조건 파괴) -->
+<!-- 최신 모듈 브라우저 차단 에러를 차단하는 호환성 표준 핵심 코어 라이브러리 배치 -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <link rel="preconnect" href="https://googleapis.com">
-<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght=500;600;700&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://googleapis.com/css2?family=Noto+Serif+KR:wght=500;600;700&family=Noto+Sans+KR:wght=400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: #EDE7D6; }
@@ -175,7 +175,7 @@
     db = firebase.firestore();
     storage = firebase.storage();
   } catch (e) {
-    console.error("파이어베이스 초기화 거부 유도 차단 가드 가동:", e);
+    console.error("파이어베이스 초기화 가드 작동:", e);
   }
 
   var TARGET_COLLECTION = "items";
@@ -302,29 +302,40 @@
   var blockedUsers = [];
   var ID_PREFIX = "선민";
 
-  // 🛠️ 서버가 꺼져 있거나 에러가 터져도 0.1초 만에 기기를 즉시 깨워내는 비동기 독립 가동소
+  // 🛠️ 로컬 스토리지에 유입된 중첩 오브젝트 찌꺼기를 파괴하고 무조건 순수 텍스트 ID만 강제 표출하는 정밀 필터 가드
   function initAppStatic() {
-    var id = null;
-    try {
-      id = window.localStorage.getItem("my-anon-id");
-    } catch (e) {}
+    var rawId = null;
+    try { rawId = window.localStorage.getItem("my-anon-id"); } catch (e) {}
 
-    // 🛠️ 파이어베이스 지연 마비와 무한 락 현상을 원천 차단하기 위한 기기 고유 난수 조합 식별자 즉시 강제 부여
-    if (!id || id === "로딩중..." || id.indexOf("대기중") !== -1) {
-      var randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
-      id = ID_PREFIX + "-" + randStr;
+    // 🛠️ 기기 내부에 오브젝트 형태나 괄호 유실 깨짐 데이터가 발견되면 강제로 도려내고 텍스트 필터링 처리
+    if (rawId && (rawId.indexOf("{") !== -1 || rawId.indexOf("id") !== -1 || rawId.indexOf("season") !== -1)) {
       try {
-        window.localStorage.setItem("my-anon-id", id);
-      } catch (e) {}
+        var parsed = JSON.parse(rawId);
+        rawId = parsed.id || null;
+      } catch (jsonErr) {
+        if (rawId.indexOf("선민") !== -1) {
+          var match = rawId.match(/선민-[A-Z0-9]+/);
+          rawId = match ? match[0] : (rawId.match(/선민\d+/) ? rawId.match(/선민\d+/)[0] : null);
+        } else {
+          rawId = null;
+        }
+      }
+    }
+
+    if (!rawId || rawId === "로딩중..." || rawId.indexOf("대기중") !== -1) {
+      var randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+      rawId = ID_PREFIX + "-" + randStr;
     }
     
-    myId = id;
+    // 최종 보정 필터를 거친 깨끗한 문자열 명칭만 고정 부착
+    myId = rawId;
+    try { window.localStorage.setItem("my-anon-id", myId); } catch (e) {}
     
-    // 🛠️ 백엔드 원격 데이터 수신 속도와 0.1%도 연동되지 않고 브라우저 탭과 각인된 고유 번호표를 무조건 즉시 가동
+    // 🛠️ 파이어베이스 연동과 무관하게 0.01초 만에 화면 표출 및 탭을 선제 가동하여 락 현상을 완벽 차단
     document.getElementById('display-my-id').innerText = myId;
     switchPageTab('browse');
     
-    // 화면 단추들의 제어권이 완벽히 활성화된 직후 배경에서 조용히 데이터 연동 시작 (화면 멈춤 완전 방지)
+    // 화면 기틀 가동이 완전히 확보된 뒤 백그라운드에서 데이터 연동 시작 (얼어붙음 방지)
     connectServerDatabase();
   }
 
@@ -408,16 +419,17 @@
         html += '  <div style="font-size: 12px; color: #999; margin-bottom: 8px;">기부자: ' + it.giverId + '</div>';
         html += '  <div style="margin-top: 10px;">';
         
+        /* 🛠️ [복원] 나눔하기 탭 스위치와 얽히지 않고, 각 물품카드마다 개별 작동하는 [받고 싶어요] 신청 버튼 유닛 */
         if (it.status === 'open') {
           if (isMine) {
-            html += '    <div style="font-size: 12px; color: #A39C8C;">내가 올린 나눔이에요</div>';
+            html += '    <div style="font-size: 12px; color: #A39C8C; text-align: center; background: #F9F9F9; padding: 8px; border-radius: 6px;">내가 올린 나눔 물품입니다.</div>';
           } else if (requested) {
-            html += '    <button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width: 100%;">신청 취소하기</button>';
+            html += '    <button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width: 100%; font-weight: bold;">신청 취소하기</button>';
           } else {
-            html += '    <button class="select-btn act-req" data-id="' + it.id + '" style="width: 100%;">받고 싶어요 (' + reqLen + '명)</button>';
+            html += '    <button class="select-btn act-req" data-id="' + it.id + '" style="width: 100%; font-weight: bold;">🙋 받고 싶어요 (' + reqLen + '명)</button>';
           }
         } else {
-          html += '  <div style="background: #F5F5F5; padding: 8px; border-radius: 6px; font-size: 13px; color: #43A047; font-weight: bold;">🎉 ' + it.selectedReceiverId + ' 님과 매칭완료!</div>';
+          html += '  <div style="background: #F5F5F5; padding: 8px; border-radius: 6px; font-size: 13px; color: #43A047; font-weight: bold; text-align: center;">🎉 ' + it.selectedReceiverId + ' 님과 매칭완료!</div>';
         }
         html += '  </div></div>';
       });
@@ -607,7 +619,7 @@
     switchPageTab('browse');
   }
 
-  // 🛠️ 파이어베이스 서버 엔진 오류와 100% 무관하게 무조건 즉시 독자 구동 개시
+  // 브라우저 돔 파싱 즉시 타이밍 꼬임 없이 안전 실행
   initAppStatic();
 </script>
 </body>

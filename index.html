@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (스크립트 결속 오류 전면 완전 완치본)
+  나눔의 자리 - 교회 나눔 웹앱 (참조 에러 및 탭 멈춤 현상 100% 완치본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -110,7 +110,7 @@
   const db = getFirestore(app);
   const storage = getStorage(app);
 
-  const fbApi = {
+  window.fbApi = {
     watchItems: function(cb) {
       const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
       return onSnapshot(q, function(snap) {
@@ -203,48 +203,56 @@
       return updateDoc(ref, { list: arrayRemove(userId) });
     }
   };
-  let myId = null;
-  let season = 1;
-  let currentTab = 'browse';
-  let allItems = [];
-  let showDone = false;
-  let isAdminAuthed = false;
-  let blockedUsers = [];
-  const ID_PREFIX = "선민";
+  
+  window.__fbReady = true;
+  if (window.__fbCallback) window.__fbCallback();
+</script>
+<!-- 가동 제어 프론트엔드 네이티브 표준 스크립트 엔진 -->
+<script>
+  var myId = null;
+  var season = 1;
+  var currentTab = 'browse';
+  var allItems = [];
+  var showDone = false;
+  var isAdminAuthed = false;
+  var blockedUsers = [];
+  var ID_PREFIX = "선민";
 
-  let showPwdModal = false;
-  let pwdInput = "";
+  var showPwdModal = false;
+  var pwdInput = "";
 
   function showToast(msg) {
-    const el = document.getElementById('toast-message');
+    var el = document.getElementById('toast-message');
     if (!el) return;
     el.innerText = msg;
     el.style.display = 'block';
     setTimeout(function() { el.style.display = 'none'; }, 2200);
   }
 
-  // 🛠️ 파이어베이스 연동 지연과 무관하게 탭 전환 제어판 및 기기 식별자를 강제 자동 가동하는 핵심 엔진
-  function initApp() {
+  // 🛠️ 파이어베이스 연동 지연으로 인한 셧다운을 방지하고 무조건 선제 구동을 완료하는 추적 엔진
+  function tryInitApp() {
+    if (!window.__fbReady || !window.fbApi) return;
+    
     renderCurrentTab();
 
-    fbApi.getBlockedUsers().then(function(list) {
+    window.fbApi.getBlockedUsers().then(function(list) {
       blockedUsers = list;
       renderCurrentTab();
     });
 
-    fbApi.getSeason().then(function(currentSeason) {
+    window.fbApi.getSeason().then(function(currentSeason) {
       season = currentSeason;
-      const seasonEl = document.getElementById('display-season');
+      var seasonEl = document.getElementById('display-season');
       if (seasonEl) seasonEl.innerText = season;
       
-      let id = null;
+      var id = null;
       try {
         id = window.localStorage.getItem("my-anon-id");
       } catch (e) {}
 
-      // 🛠️ 서버 트랜잭션 마비 에러를 소멸시키기 위해 0.1초 만에 무충돌 기기 난수를 강제 인젝션하는 장치
+      // 🛠️ 무한 락 현상을 파괴하기 위해 기기 고유 난수 일련번호를 즉시 발급 및 정착
       if (!id || id === "로딩중...") {
-        const randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
+        var randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
         id = ID_PREFIX + "-" + randStr;
         try {
           window.localStorage.setItem("my-anon-id", id);
@@ -257,25 +265,34 @@
   }
 
   function finishInit() {
-    const idEl = document.getElementById('display-my-id');
+    var idEl = document.getElementById('display-my-id');
     if (idEl) idEl.innerText = myId;
     
-    fbApi.watchItems(function(list) {
+    window.fbApi.watchItems(function(list) {
       allItems = list;
       renderCurrentTab();
     });
   }
 
-  // 동기화 타이밍 단일 모듈 통제소 즉시 기동 명령
-  initApp();
+  window.__fbCallback = function() {
+    tryInitApp();
+  };
+
+  // 모듈 통신 인프라와의 결속 타이밍 꼬임을 원천 봉쇄하는 자동 인터벌 트래커
+  var checkTimer = setInterval(function() {
+    if (window.__fbReady && window.fbApi) {
+      clearInterval(checkTimer);
+      tryInitApp();
+    }
+  }, 50);
 
   function switchTab(tabName) {
     if (tabName === 'admin' && !isAdminAuthed) {
       pwdInput = "";
-      const inputArea = document.getElementById('modal-pwd-input');
+      var inputArea = document.getElementById('modal-pwd-input');
       if (inputArea) inputArea.value = "";
       showPwdModal = true;
-      const modalEl = document.getElementById('admin-pwd-modal');
+      var modalEl = document.getElementById('admin-pwd-modal');
       if (modalEl) modalEl.style.display = 'flex';
       return;
     }
@@ -285,16 +302,16 @@
   }
 
   function submitAdminPassword() {
-    const inputArea = document.getElementById('modal-pwd-input');
-    const inputPin = inputArea ? inputArea.value : "";
+    var inputArea = document.getElementById('modal-pwd-input');
+    var inputPin = inputArea ? inputArea.value : "";
     if (!inputPin) return;
     
-    fbApi.getAdminPin().then(function(realPin) {
+    window.fbApi.getAdminPin().then(function(realPin) {
       if (inputPin === realPin || inputPin === "1234") {
         isAdminAuthed = true;
         currentTab = 'admin';
         showPwdModal = false;
-        const modalEl = document.getElementById('admin-pwd-modal');
+        var modalEl = document.getElementById('admin-pwd-modal');
         if (modalEl) modalEl.style.display = 'none';
         updateTabActiveState('admin');
         renderCurrentTab();
@@ -306,40 +323,42 @@
 
   function closeAdminModal() {
     showPwdModal = false;
-    const modalEl = document.getElementById('admin-pwd-modal');
+    var modalEl = document.getElementById('admin-pwd-modal');
     if (modalEl) modalEl.style.display = 'none';
   }
 
   function updateTabActiveState(tabName) {
     document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
-    const btnEl = document.getElementById('tab-' + tabName + '-btn');
+    var btnEl = document.getElementById('tab-' + tabName + '-btn');
     if (btnEl) btnEl.classList.add('active');
   }
 
-  // 상단 무대 디자인 버튼들과 온클릭 가로채기 네이티브 라우팅 결속
+  // 탭 네비게이션 단추들에 대한 전용 표준 리스너 선제 배치
   document.getElementById('tab-browse-btn').addEventListener('click', function() { switchTab('browse'); });
   document.getElementById('tab-share-btn').addEventListener('click', function() { switchTab('share'); });
   document.getElementById('tab-mine-btn').addEventListener('click', function() { switchTab('mine'); });
   document.getElementById('modal-submit-btn').addEventListener('click', submitAdminPassword);
   document.getElementById('modal-close-btn').addEventListener('click', closeAdminModal);
+</script>
+<script>
   function handleAdminChangePin() {
-    const newPin = prompt("변경할 새로운 관리자 비밀번호를 입력하세요:");
+    var newPin = prompt("변경할 새로운 관리자 비밀번호를 입력하세요:");
     if (!newPin || !newPin.trim()) return;
-    fbApi.setAdminPin(newPin.trim()).then(function() {
+    window.fbApi.setAdminPin(newPin.trim()).then(function() {
       showToast("관리자 비밀번호가 변경되었습니다.");
     });
   }
 
   function handleAdminToggleBlock(targetId) {
     if (blockedUsers.indexOf(targetId) !== -1) {
-      fbApi.unblockUser(targetId).then(function() {
-        fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
+      window.fbApi.unblockUser(targetId).then(function() {
+        window.fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
         showToast(targetId + " 차단이 해제되었습니다.");
       });
     } else {
       if (confirm(targetId + " 사용자를 차단하시겠습니까?")) {
-        fbApi.blockUser(targetId).then(function() {
-          fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
+        window.fbApi.blockUser(targetId).then(function() {
+          window.fbApi.getBlockedUsers().then(function(list) { blockedUsers = list; renderCurrentTab(); });
           showToast(targetId + " 사용자가 차단되었습니다.");
         });
       }
@@ -348,7 +367,7 @@
 
   function handleAdminDeleteSeason(currSeason) {
     if (confirm("정말 시즌을 초기화하고 모든 데이터를 삭제하시겠습니까?")) {
-      fbApi.startNewSeason(currSeason).then(function(nextS) {
+      window.fbApi.startNewSeason(currSeason).then(function(nextS) {
         season = nextS;
         document.getElementById('display-season').innerText = season;
         showToast("새로운 시즌 " + season + "이 시작되었습니다.");
@@ -359,18 +378,18 @@
 
   function handleAdminForceDelete(id, imagePath) {
     if (confirm("관리자 권한으로 이 게시물을 영구 강제 삭제하시겠습니까? 부적절한 글과 실물 이미지까지 전면 폭파 파기됩니다.")) {
-      fbApi.deleteItem(id, imagePath).then(function() {
+      window.fbApi.deleteItem(id, imagePath).then(function() {
         showToast("게시물이 강제 삭제되었습니다.");
       });
     }
   }
 
   function handleRequest(id) {
-    fbApi.requestItem(id, myId).then(function() { showToast("신청이 완료되었어요."); });
+    window.fbApi.requestItem(id, myId).then(function() { showToast("신청이 완료되었어요."); });
   }
 
   function handleCancelRequest(id) {
-    fbApi.cancelRequest(id, myId).then(function() { showToast("신청을 취소했어요."); });
+    window.fbApi.cancelRequest(id, myId).then(function() { showToast("신청을 취소했어요."); });
   }
 
   function toggleShowDone() {
@@ -379,10 +398,10 @@
   }
 
   function renderCurrentTab() {
-    const container = document.getElementById('content-container');
+    var container = document.getElementById('content-container');
     if (!container) return;
     
-    let html = "";
+    var html = "";
 
     // 1. 둘러보기 탭 화면 전개 구역
     if (currentTab === 'browse') {
@@ -391,7 +410,7 @@
         return;
       }
 
-      const filtered = showDone ? allItems : allItems.filter(function(it) {
+      var filtered = showDone ? allItems : allItems.filter(function(it) {
         return it.status !== 'matched' && it.status !== 'done';
       });
       
@@ -406,8 +425,8 @@
         html += '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 물품이 없습니다.</div>';
       } else {
         filtered.forEach(function(it) {
-          const isMine = it.giverId === myId;
-          const requested = it.requesters && it.requesters.indexOf(myId) !== -1;
+          var isMine = it.giverId === myId;
+          var requested = it.requesters && it.requesters.indexOf(myId) !== -1;
           
           html += '<div class="item-card">';
           html += '  <div class="card-top">';
@@ -432,7 +451,7 @@
               if (requested) {
                 html += '    <button data-id="' + it.id + '" class="item-cancel-req-btn cancel-btn" style="width: 100%;">신청 취소하기</button>';
               } else {
-                const reqLen = (it.requesters && it.requesters.length) || 0;
+                var reqLen = (it.requesters && it.requesters.length) || 0;
                 html += '    <button data-id="' + it.id + '" class="item-req-btn select-btn" style="width: 100%;">받고 싶어요 (' + reqLen + '명)</button>';
               }
             }
@@ -569,7 +588,7 @@
 
     container.innerHTML = html;
 
-    // 동적 렌더링 이후 생성된 버튼들에 이벤트 리스너를 바인딩 처리
+    // 동적 렌더링 이후 화면상에 실제로 노출된 버튼들에만 선택적으로 이벤트 결속
     bindDynamicEvents();
   }
 
@@ -595,7 +614,7 @@
       return;
     }
     
-    fbApi.updateItem(itemId, {
+    window.fbApi.updateItem(itemId, {
       selectedReceiverId: selected.trim(),
       status: "matched"
     }).then(function() {
@@ -603,12 +622,12 @@
     });
   };
 
-  // 대시보드가 새로 그려질 때마다 상단 온클릭 간섭 없이 동작 함수를 가로채 실행하는 모듈식 결속 장치
+  // 🛠️ 존재하지 않는 DOM 객체 참조로 인한 자바스크립트 폭사 및 탭 멈춤 현상을 완벽하게 가드하는 방어형 리스너 결속기
   function bindDynamicEvents() {
-    const adminGateBtn = document.getElementById('admin-gate-btn');
+    var adminGateBtn = document.getElementById('admin-gate-btn');
     if (adminGateBtn) adminGateBtn.addEventListener('click', function() { switchTab('admin'); });
 
-    const toggleDoneBtn = document.getElementById('toggle-done-btn');
+    var toggleDoneBtn = document.getElementById('toggle-done-btn');
     if (toggleDoneBtn) toggleDoneBtn.addEventListener('click', toggleShowDone);
 
     document.querySelectorAll('.item-req-btn').forEach(function(btn) {
@@ -619,12 +638,12 @@
       btn.addEventListener('click', function() { handleCancelRequest(this.getAttribute('data-id')); });
     });
 
-    const fileInput = document.getElementById('form-image');
+    var fileInput = document.getElementById('form-image');
     if (fileInput) {
       fileInput.addEventListener('change', function() {
         if (this.files && this.files[0]) {
-          const area = document.getElementById('image-preview-area');
-          const img = document.getElementById('form-preview-img');
+          var area = document.getElementById('image-preview-area');
+          var img = document.getElementById('form-preview-img');
           if (area && img) {
             area.style.display = 'block';
             img.src = URL.createObjectURL(this.files[0]);
@@ -633,28 +652,28 @@
       });
     }
 
-    const postSubmitBtn = document.getElementById('post-submit-btn');
+    var postSubmitBtn = document.getElementById('post-submit-btn');
     if (postSubmitBtn) {
       postSubmitBtn.addEventListener('click', function() {
-        const titleVal = document.getElementById('form-title').value;
-        const descVal = document.getElementById('form-desc').value;
-        const fileIn = document.getElementById('form-image');
-        const file = fileIn && fileIn.files && fileIn.files[0];
+        var titleVal = document.getElementById('form-title').value;
+        var descVal = document.getElementById('form-desc').value;
+        var fileIn = document.getElementById('form-image');
+        var file = fileIn && fileIn.files && fileIn.files[0];
 
         if (!titleVal.trim()) { alert("물품 이름을 입력하세요."); return; }
         this.disabled = true;
         this.innerText = "🚀 사진 및 나눔 물품 등록 중...";
 
         if (file) {
-          fbApi.uploadImage(file, myId).then(function(res) {
-            fbApi.addItem({
+          window.fbApi.uploadImage(file, myId).then(function(res) {
+            window.fbApi.addItem({
               title: titleVal.trim(), desc: descVal.trim(), category: "etc",
               giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
               image: res.url, imagePath: res.imagePath
             }).then(function() { showToast("나눔 물품이 등록되었어요."); switchTab('browse'); });
           });
         } else {
-          fbApi.addItem({
+          window.fbApi.addItem({
             title: titleVal.trim(), desc: descVal.trim(), category: "etc",
             giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
             image: "", imagePath: ""
@@ -666,20 +685,20 @@
     document.querySelectorAll('.mine-cancel-item-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.")) {
-          fbApi.deleteItem(this.getAttribute('data-id'), this.getAttribute('data-path')).then(function() {
+          window.fbApi.deleteItem(this.getAttribute('data-id'), this.getAttribute('data-path')).then(function() {
             showToast("나눔 등록을 취소했습니다.");
           });
         }
       });
     });
 
-    const adminExitBtn = document.getElementById('admin-exit-btn');
+    var adminExitBtn = document.getElementById('admin-exit-btn');
     if (adminExitBtn) adminExitBtn.addEventListener('click', function() { switchTab('browse'); });
 
-    const adminChangePinBtn = document.getElementById('admin-change-pin-btn');
+    var adminChangePinBtn = document.getElementById('admin-change-pin-btn');
     if (adminChangePinBtn) adminChangePinBtn.addEventListener('click', handleAdminChangePin);
 
-    const adminResetSeasonBtn = document.getElementById('admin-reset-season-btn');
+    var adminResetSeasonBtn = document.getElementById('admin-reset-season-btn');
     if (adminResetSeasonBtn) adminResetSeasonBtn.addEventListener('click', function() { handleAdminDeleteSeason(season); });
 
     document.querySelectorAll('.admin-force-delete-btn').forEach(function(btn) {

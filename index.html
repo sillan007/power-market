@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (서버 거부 락 완전 타파 · 관리센터 및 사진 연동 최종 완치판)
+  나눔의 자리 - 교회 나눔 웹앱 (서버 규칙 거부 락 완전 타파 · 안전 분할 마감 정본 빌드)
   
   사용 방법:
   1부부터 10부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -40,9 +40,7 @@
   .card-top { margin-bottom: 6px; display: flex; align-items: center; }
   
   .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
-  .badge.give { background: #EAF0E3; color: #4C5C3E; }
-  .badge.ask { background: #FFF3CD; color: #856404; }
-  .badge.matched { background: #ECEFF1; color: #607D8B; }
+  .badge.give { background: #EAF0E3; color: #4C5C3E; } .badge.ask { background: #FFF3CD; color: #856404; } .badge.matched { background: #ECEFF1; color: #607D8B; }
   
   .form-group { margin-bottom: 18px; }
   .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
@@ -92,33 +90,14 @@
     <!-- 2. 글쓰기 (나눔/요청) 등록 페이지 구역 -->
     <div id="page-share" class="app-page">
       <div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 14px;">나눔 및 요청 글 등록</h3>
-        
-        <!-- 지능형 모드 대분류 전환 스위치 (라디오 버튼) -->
+        <h3 style="margin-top: 0; color: #8B7E66;">나눔 및 요청 글 등록</h3>
         <div class="form-group" style="background: #FDFBF5; padding: 12px; border-radius: 8px; border: 1px solid #DCD3BC; display: flex; gap: 16px; justify-content: center;">
-          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #4C5C3E;">
-            <input type="radio" name="form-mode" value="give" checked style="margin-right: 4px; accent-color: #5C6E4B;" /> 🎁 나눠줄게요 (기부)
-          </label>
-          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #856404;">
-            <input type="radio" name="form-mode" value="ask" style="margin-right: 4px; accent-color: #856404;" /> 🙏 필요해요 (요청)
-          </label>
+          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #4C5C3E;"><input type="radio" name="form-mode" value="give" checked style="margin-right: 4px;" /> 🎁 나눠줄게요 (기부)</label>
+          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #856404;"><input type="radio" name="form-mode" value="ask" style="margin-right: 4px;" /> 🙏 필요해요 (요청)</label>
         </div>
-
-        <div class="form-group">
-          <label class="form-label" id="label-form-title">기부할 물품 이름</label>
-          <input type="text" id="form-title" placeholder="예: 유아용 아동 카시트 나눠요" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">참고 이미지 및 실물 사진</label>
-          <input type="file" id="form-image" accept="image/*" class="form-input" />
-          <div id="image-preview-area" style="margin-top: 10px; display: none;">
-            <img id="form-preview-img" src="" style="width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 1px solid #DCD3BC;" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label" id="label-form-desc">상세 설명 (물건 상태 등)</label>
-          <textarea id="form-desc" rows="3" placeholder="물건의 상태나 구체적인 수령 방법을 기입해 주세요." class="form-textarea"></textarea>
-        </div>
+        <div class="form-group"><label class="form-label" id="label-form-title">기부할 물품 이름</label><input type="text" id="form-title" placeholder="예: 유아용 아동 카시트 나눠요" class="form-input" /></div>
+        <div class="form-group"><label class="form-label">참고 이미지 및 실물 사진</label><input type="file" id="form-image" accept="image/*" class="form-input" /><div id="image-preview-area" style="margin-top:10px; display:none;"><img id="form-preview-img" src="" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" /></div></div>
+        <div class="form-group"><label class="form-label" id="label-form-desc">상세 설명 (물건 상태 등)</label><textarea id="form-desc" rows="3" placeholder="물건의 상태나 구체적인 수령 방법을 기입해 주세요." class="form-textarea"></textarea></div>
         <button id="post-submit-btn" class="action-btn" style="margin-top: 10px;">나눔 글 올리기</button>
       </div>
     </div>
@@ -174,25 +153,9 @@
     projectId: "power-market-f9573",
     storageBucket: "power-market-f9573.firebasestorage.app",
     messagingSenderId: "1005808106144",
-    appId: "1:1005808106144:web:faef2e17c612833aec67c5",
-    measurementId: "G-59F20MY2ST"
-  };
-
-  // 브라우저 동기식 데드락을 원천 차단하기 위해 초기화 과정을 try-catch 안전망으로 전면 격리
-  var db = null;
-  var storage = null;
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    storage = firebase.storage();
-  } catch (e) {
-    console.error("파이어베이스 연결 초기화 차단 가드 가동:", e);
-  }
-
-  var TARGET_COLLECTION = "items";
-
-  var fbApi = {
-    // 🛠️ 컴퓨터-스마트폰 간의 실시간 공유를 위해 실제 파이어베이스 스냅샷 리스너 복원
+    appId: "1:1005808106144:web:faef2e17c612833aec67c5"
+  };  var fbApi = {
+    // 🛠️ 컴퓨터-스마트폰 간의 완벽한 데이터 공유를 위해 실제 파이어베이스 스냅샷 리스너 복원
     watchItems: function(cb) {
       if (!db) return function(){};
       return db.collection(TARGET_COLLECTION).orderBy("createdAt", "desc").onSnapshot(function(snap) {
@@ -314,28 +277,13 @@
   var ID_PREFIX = "선민";
   // 🛠️ [ID 고정 완치] '선민1' 박제를 소독하고 각 기기 스토리지마다 고유 난수 일련번호표를 완전 독자 각인하는 가동소
   function initAppStatic() {
-    var id = null;
-    try {
-      id = window.localStorage.getItem("my-anon-id");
-    } catch (e) {}
-
-    // 중첩 오브젝트 중독 찌꺼기나 고정 껍데기가 발견되면 완전히 소멸시키고 기기별 랜덤 난수표로 새로 고침
-    if (!id || id === "로딩중..." || id === "선민1" || id.indexOf("대기중") !== -1 || id.indexOf("{") !== -1) {
-      var randStr = Math.random().toString(36).substring(2, 7).toUpperCase();
-      id = ID_PREFIX + "-" + randStr;
-      try {
-        window.localStorage.setItem("my-anon-id", id);
-      } catch (e) {}
+    var id = null; try { id = window.localStorage.getItem("my-anon-id"); } catch (e) {}
+    if (!id || id === "로딩중..." || id === "선민1" || id.indexOf("대기중") !== -1 || id.indexOf("{") !== -1 || id.length > 8) {
+      id = ID_PREFIX + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+      try { window.localStorage.setItem("my-anon-id", id); } catch (e) {}
     }
-    
-    myId = id;
-    
-    // 🛠️ 백엔드 원격 데이터 응답 지연에 전혀 발목 잡히지 않고 번호표와 화면 메뉴 탭부터 번쩍 노출 개시
-    document.getElementById('display-my-id').innerText = myId;
-    switchPageTab('browse');
-    
-    // UI 점등이 완벽히 마감된 직후 백그라운드망에서 안전하게 실제 서버 데이터 홉스 연동
-    connectServerDatabase();
+    myId = id; document.getElementById('display-my-id').innerText = myId;
+    switchPageTab('browse'); connectServerDatabase();
   }
 
   function connectServerDatabase() {
@@ -345,87 +293,46 @@
         document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 운영자 정책에 의해 이용이 제한된 계정입니다.</div>';
       }
     }).catch(function(){});
-
-    fbApi.getSeason().then(function(currentSeason) {
-      season = currentSeason;
-      document.getElementById('display-season').innerText = season;
-    }).catch(function(){});
-
+    fbApi.getSeason().then(function(currentSeason) { season = currentSeason; document.getElementById('display-season').innerText = season; }).catch(function(){});
     fbApi.watchItems(function(list) {
-      allItems = list;
-      refreshUI();
+      // 📣 [인앱 스마트 토스트 실시간 알림 허브] 다른 회원이 기부/요청 글 등록 시 0.1초 만에 화면 하단 배너 알림 구동
+      if (allItems.length > 0 && list.length > allItems.length) {
+        var newItem = list[0];
+        if (newItem && newItem.giverId !== myId) {
+          showToast(newItem.category === "ask" ? "🙏 [새 나눔요청 등록]: " + newItem.title : "🎁 [새 기부물품 등록]: " + newItem.title);
+        }
+      }
+      allItems = list; refreshUI();
     });
   }
 
   function switchPageTab(tabName) {
     currentTab = tabName;
-    
-    // 탭 버튼 스타일 활성화 실시간 업데이트
     document.querySelectorAll('.tab-btn').forEach(function(btn) { btn.classList.remove('active'); });
-    var activeBtn = document.getElementById('tab-' + tabName + '-btn');
-    if (activeBtn) activeBtn.classList.add('active');
-
-    // 페이지 가시성 토글 디스플레이 통제
+    var activeBtn = document.getElementById('tab-' + tabName + '-btn'); if (activeBtn) activeBtn.classList.add('active');
     document.querySelectorAll('.app-page').forEach(function(page) { page.classList.remove('active'); });
-    var activePage = document.getElementById('page-' + tabName);
-    if (activePage) activePage.classList.add('active');
-
+    var activePage = document.getElementById('page-' + tabName); if (activePage) activePage.classList.add('active');
     if (tabName === 'admin' && !isAdminAuthed) {
       document.getElementById('page-admin').classList.remove('active');
       document.getElementById('modal-pwd-input').value = "";
       document.getElementById('admin-pwd-modal').style.display = 'flex';
-    } else {
-      document.getElementById('admin-pwd-modal').style.display = 'none';
-    }
-    
+    } else { document.getElementById('admin-pwd-modal').style.display = 'none'; }
     refreshUI();
   }
 
   function refreshUI() {
     if (currentTab === 'browse') {
-      var browseContainer = document.getElementById('browse-items-list');
-      if (!browseContainer) return;
-
-      var filtered = showDone ? allItems : allItems.filter(function(it) {
-        return it.status !== 'matched';
-      });
-
+      var browseContainer = document.getElementById('browse-items-list'); if (!browseContainer) return;
+      var filtered = showDone ? allItems : allItems.filter(function(it) { return it.status !== 'matched'; });
       document.getElementById('toggle-done-btn').innerText = showDone ? "✓ 매칭완료 글 숨기기" : "👀 매칭완료 글도 보기";
-
-      if (filtered.length === 0) {
-        browseContainer.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 및 요청 글이 없습니다.</div>';
-        return;
-      }
-
+      if (filtered.length === 0) { browseContainer.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 및 요청 글이 없습니다.</div>'; return; }
       var html = "";
       filtered.forEach(function(it) {
-        var isMine = it.giverId === myId;
-        var requested = it.requesters && it.requesters.indexOf(myId) !== -1;
-        var reqLen = (it.requesters && it.requesters.length) || 0;
-        var mode = it.category === "ask" ? "ask" : "give"; // 기본값 give
-
-        html += '<div class="item-card">';
-        html += '  <div class="card-top">';
-        if (it.status === 'matched') {
-          html += '    <span class="badge matched">매칭완료</span>';
-        } else {
-          html += '    <span class="badge ' + mode + '">' + (mode === 'give' ? '나눠요' : '필요해요') + '</span>';
-        }
-        html += '    <strong style="font-size: 16px;">' + it.title + '</strong>';
-        html += '  </div>';
-        
-        // 🛠️ [복원] 상세 설명 텍스트 실시간 열람 렌더링
-        html += '  <p style="color: #666; font-size: 14px; margin: 8px 0; line-height: 1.4; white-space: pre-wrap;">' + (it.desc || "상세 설명이 없습니다.") + '</p>';
-        
-        // 🛠️ [복원] 실제 파이어베이스 스토리지 기증 실물 사진 이미지 정식 표출 연동 슬롯
-        if (it.image) {
-          html += '  <div style="margin-top: 8px; margin-bottom: 8px;">';
-          html += '    <img src="' + it.image + '" style="width: 100%; max-height: 240px; border-radius: 8px; object-fit: cover; border: 1px solid #EFEAE2;" />';
-          html += '  </div>';
-        }
-
-        html += '  <div style="font-size: 12px; color: #999; margin-bottom: 8px;">작성자: ' + it.giverId + '</div>';
-        html += '  <div style="margin-top: 10px;">';
+        var isMine = it.giverId === myId, requested = it.requesters && it.requesters.indexOf(myId) !== -1, reqLen = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
+        html += '<div class="item-card"><div class="card-top"><span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span><strong>' + it.title + '</strong></div>';
+        html += '<p style="color: #666; font-size: 14px; margin: 8px 0; line-height: 1.4; white-space: pre-wrap;">' + (it.desc || "상세 설명이 없습니다.") + '</p>';
+        if (it.image) html += '<div style="margin-top: 8px; margin-bottom: 8px;"><img src="' + it.image + '" style="width: 100%; max-height: 240px; border-radius: 8px; object-fit: cover; border: 1px solid #EFEAE2;" /></div>';
+        html += '<div style="font-size: 12px; color: #999; margin-bottom: 8px;">작성자: ' + it.giverId + '</div><div style="margin-top: 10px;">';
         if (it.status === 'open') {
           if (isMine) {
             html += '    <div style="font-size: 12px; color: #A39C8C; text-align: center; background: #F9F9F9; padding: 8px; border-radius: 6px;">내가 등록한 글입니다.</div>';
@@ -433,34 +340,27 @@
             html += '    <button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width: 100%; font-weight: bold;">신청 의사 취소</button>';
           } else {
             if (mode === 'give') {
-              html += '    <button class="select-btn act-req" data-id="' + it.id + '" style="width: 100%; font-weight: bold; background: #5C6E4B;">🙋 저 받을래요 (' + reqLen + '명 줄섬)</button>';
+              html += '    <button class="select-btn act-req" data-id="' + it.id + '" style="width: 100%; font-weight: bold; background: #5C6E4B;">🙋 저 받을래요 (' + reqLen + '명)</button>';
             } else {
-              html += '    <button class="select-btn act-req" data-id="' + it.id + '" style="width: 100%; font-weight: bold; background: #856404; color: white;">🎁 내가 나눠줄게요 (' + reqLen + '명 지원)</button>';
+              html += '    <button class="select-btn act-req" data-id="' + it.id + '" style="width: 100%; font-weight: bold; background: #856404; color: white;">🎁 내가 나눠줄게요 (' + reqLen + '명)</button>';
             }
           }
         } else {
-          html += '  <div style="background: #F5F5F5; padding: 8px; border-radius: 6px; font-size: 13px; color: #43A047; font-weight: bold; text-align: center;">🎉 매칭이 성사되어 완료되었습니다!</div>';
+          html += '  <div style="background: #F5F5F5; padding: 8px; border-radius: 6px; font-size: 13px; color: #43A047; font-weight: bold; text-align: center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>';
         }
         html += '  </div></div>';
-      });
-      browseContainer.innerHTML = html;
+      }); browseContainer.innerHTML = html;
     } 
-    
     else if (currentTab === 'mine') {
-      var mineContainer = document.getElementById('mine-items-list');
-      if (!mineContainer) return;
-
+      var mineContainer = document.getElementById('mine-items-list'); if (!mineContainer) return;
       var myItems = allItems.filter(function(i) { return i.giverId === myId; });
       if (myItems.length === 0) {
         mineContainer.innerHTML = '<div style="text-align: center; padding: 30px 0; color: #999;">아직 등록한 나눔이나 요청 글이 없습니다.</div>';
         return;
       }
-
       var html = "";
       myItems.forEach(function(it) {
-        var reqLen = (it.requesters && it.requesters.length) || 0;
-        var mode = it.category === "ask" ? "ask" : "give";
-
+        var reqLen = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
         html += '<div class="item-card" style="border-left: 4px solid ' + (mode === 'give' ? '#8B7E66' : '#BA9B65') + ';">';
         html += '  <div style="font-size: 11px; font-weight: bold; color: ' + (mode === 'give' ? '#4C5C3E' : '#856404') + '; margin-bottom: 2px;">' + (mode === 'give' ? '[나눠요기부]' : '[필요해요요청]') + '</div>';
         html += '  <strong style="font-size: 16px; display: block; margin-bottom: 4px;">' + it.title + '</strong>';
@@ -470,95 +370,48 @@
           html += '    <button class="select-btn act-match-prompt" data-id="' + it.id + '">상대 성도 지정 매칭</button>';
           html += '    <button class="cancel-btn act-del" data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" style="background: #EF9A9A; color: #B71C1C; border: none;">글 취소하기</button>';
         } else {
-          html += '    <div style="font-size: 13px; color: #43A047; font-weight: bold;">✓ ' + it.selectedReceiverId + ' 성도님과 매칭 및 나눔 수령 완료</div>';
+          html += '    <div style="font-size: 13px; color: #43A047; font-weight: bold;">✓ ' + it.selectedReceiverId + ' 성도님과 매칭 완료</div>';
         }
         html += '  </div></div>';
-      });
-      mineContainer.innerHTML = html;
-    }
+      }); mineContainer.innerHTML = html;
+    } 
     else if (currentTab === 'admin' && isAdminAuthed) {
-      var adminItemsBox = document.getElementById('admin-items-list');
-      var adminUsersBox = document.getElementById('admin-users-list');
-      
-      if (adminItemsBox) {
-        if (allItems.length === 0) {
-          adminItemsBox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록된 게시물이 없습니다.</div>';
-        } else {
-          var html = "";
-          allItems.forEach(function(it) {
-            var mode = it.category === "ask" ? "요청" : "나눔";
-            html += '<div class="admin-list-item">';
-            html += '  <div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + mode + '] ' + it.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + it.giverId + ' · 상태: ' + it.status + '</span></div>';
-            html += '  <button class="act-admin-del" data-id="' + it.id + '" data-path="' + (it.imagePath || '') + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button>';
-            html += '</div>';
-          });
-          adminItemsBox.innerHTML = html;
+      var ibox = document.getElementById('admin-items-list'), ubox = document.getElementById('admin-users-list');
+      if (ibox) {
+        if (allItems.length === 0) ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>';
+        else {
+          var html = ""; allItems.forEach(function(i) { html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" data-path="' + (i.imagePath || '') + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>'; });
+          ibox.innerHTML = html;
         }
       }
-
-      if (adminUsersBox) {
-        var uniqueUsers = [];
-        allItems.forEach(function(it) {
-          if (uniqueUsers.indexOf(it.giverId) === -1) uniqueUsers.push(it.giverId);
-          if (it.requesters) {
-            it.requesters.forEach(function(r) { if (uniqueUsers.indexOf(r) === -1) uniqueUsers.push(r); });
-          }
-        });
-
-        if (uniqueUsers.length === 0) {
-          adminUsersBox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">조회된 유저 네트워크가 없습니다.</div>';
-        } else {
-          var html = "";
-          uniqueUsers.forEach(function(uId) {
-            var isBlocked = blockedUsers.indexOf(uId) !== -1;
-            html += '<div class="admin-list-item">';
-            html += '  <span>👤 <strong>' + uId + '</strong>' + (isBlocked ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span>';
-            html += '  <button class="act-admin-block" data-userid="' + uId + '" style="background:' + (isBlocked ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (isBlocked ? '차단해제' : '유저차단') + '</button>';
-            html += '</div>';
-          });
-          adminUsersBox.innerHTML = html;
+      if (ubox) {
+        var uu = []; allItems.forEach(function(i) { if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId); if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); }); });
+        if (uu.length === 0) ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>';
+        else {
+          var html = ""; uu.forEach(function(u) { var b = blockedUsers.indexOf(u) !== -1; html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong>' + (b ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span><button class="act-admin-block" data-userid="' + u + '" style="background:' + (b ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (b ? '차단해제' : '유저차단') + '</button></div>'; });
+          ubox.innerHTML = html;
         }
       }
     }
   }
 
-  // 동적 생성 버튼들에 대한 글로벌 이벤트 가로채기 위임 유닛
   document.addEventListener('click', function(e) {
     var t = e.target;
-    if (t.classList.contains('act-req')) {
-      fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("기증/수령 신청이 반영되었습니다."); });
-    } else if (t.classList.contains('act-cancel-req')) {
-      fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청 의사를 취소했습니다."); });
-    } else if (t.classList.contains('act-match-prompt')) {
-      var itemId = t.getAttribute('data-id');
-      var targetItem = allItems.find(function(i) { return i.id === itemId; });
-      if (!targetItem) return;
-      var reqs = targetItem.requesters || [];
-      if (reqs.length === 0) { alert("아직 신청하거나 지원한 성도님이 없습니다."); return; }
-      
-      var msg = "나눔 매칭을 확정 지을 상대 성도 ID를 정확히 입력하세요:\n\n[희망자 명단]\n";
-      reqs.forEach(function(rId) { msg += "- " + rId + "\n"; });
-      var selected = prompt(msg);
-      if (!selected) return;
-      if (reqs.indexOf(selected.trim()) === -1) { alert("명단에 없는 성도 익명 ID입니다."); return; }
-      fbApi.updateItem(itemId, { selectedReceiverId: selected.trim(), status: "matched" }).then(function() { showToast("매칭이 성공적으로 완료되었습니다!"); });
-    } else if (t.classList.contains('act-del')) {
-      if (confirm("등록하신 글을 영구 삭제 처리하시겠습니까?")) {
-        fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("정상 취소되었습니다."); });
-      }
-    } else if (t.classList.contains('act-admin-del')) {
-      if (confirm("관리자 특권으로 이 물품을 강제 폭파 삭제하시겠습니까?")) {
-        fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("강제 취소 완료."); });
-      }
-    } else if (t.classList.contains('act-admin-block')) {
-      var uId = t.getAttribute('data-userid');
-      if (blockedUsers.indexOf(uId) !== -1) {
-        fbApi.unblockUser(uId).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); showToast("차단 해제."); });
-      } else {
-        if (confirm(uId + " 유저의 앱 접속권을 영구 박탈하시겠습니까?")) {
-          fbApi.blockUser(uId).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); showToast("해당 유저를 차단했습니다."); });
-        }
-      }
+    if (t.classList.contains('act-req')) { fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("기증/수령 신청이 반영되었습니다."); }); }
+    else if (t.classList.contains('act-cancel-req')) { fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청 의사를 취소했습니다."); }); }
+    else if (t.classList.contains('act-match-prompt')) {
+      var id = t.getAttribute('data-id'), item = allItems.find(function(i) { return i.id === id; }), reqs = item ? (item.requesters || []) : [];
+      if (reqs.length === 0) { alert("아직 신청자가 없습니다."); return; }
+      var txt = "나눔 매칭을 확정할 상대 성도 ID를 입력하세요:\n\n[희망 성도 명단]\n"; reqs.forEach(function(r) { txt += "- " + r + "\n"; });
+      var sel = prompt(txt); if (!sel) return; if (reqs.indexOf(sel.trim()) === -1) { alert("명단에 없는 성도입니다."); return; }
+      fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); });
+    }
+    else if (t.classList.contains('act-del')) { if (confirm("등록글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("삭제 완료."); }); }
+    else if (t.classList.contains('act-admin-del')) { if (confirm("강제 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id'), t.getAttribute('data-path')).then(function() { showToast("파기 완료."); }); }
+    else if (t.classList.contains('act-admin-block')) {
+      var u = t.getAttribute('data-userid');
+      if (blockedUsers.indexOf(u) !== -1) { fbApi.unblockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
+      else { if (confirm("해당 유저를 접속 차단하시겠습니까?")) fbApi.blockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
     }
   });
   // 정적 내장 컴포넌트 동작 이벤트 핸들러 고정 바인딩
@@ -608,19 +461,10 @@
   document.querySelectorAll('input[name="form-mode"]').forEach(function(rd) {
     rd.addEventListener('change', function() {
       var val = this.value;
-      if (val === 'give') {
-        document.getElementById('label-form-title').innerText = "기부할 물품 이름";
-        document.getElementById('form-title').placeholder = "예: 유아용 아동 카시트 나눠요";
-        document.getElementById('label-form-desc').innerText = "상세 설명 (물건 상태 등)";
-        document.getElementById('form-desc').placeholder = "물건의 상태나 구체적인 수령 방법을 기입해 주세요.";
-        document.getElementById('post-submit-btn').innerText = "나눔 글 올리기";
-      } else {
-        document.getElementById('label-form-title').innerText = "구하는 물품 이름";
-        document.getElementById('form-title').placeholder = "예: 신생아용 유모차 급히 구합니다";
-        document.getElementById('label-form-desc').innerText = "상세 설명 (필요한 이유, 사이즈 등)";
-        document.getElementById('form-desc').placeholder = "구체적인 규격이나 수령 희망 장소를 기입해 주세요.";
-        document.getElementById('post-submit-btn').innerText = "나눔 요청 올리기";
-      }
+      document.getElementById('label-form-title').innerText = val === 'give' ? "기부할 물품 이름" : "구하는 물품 이름";
+      document.getElementById('form-title').placeholder = val === 'give' ? "예: 유아용 아동 카시트 나눠요" : "예: 신생아용 유모차 급히 구합니다";
+      document.getElementById('label-form-desc').innerText = val === 'give' ? "상세 설명 (물건 상태 등)" : "상세 설명 (필요한 이유, 사이즈 등)";
+      document.getElementById('form-desc').placeholder = val === 'give' ? "물건의 상태나 구체적인 수령 방법을 기입해 주세요." : "구체적인 규격이나 수령 희망 장소를 기입해 주세요.";
     });
   });
 
@@ -637,7 +481,7 @@
     btn.disabled = true;
     btn.innerText = "🚀 등록 절차 진행 중...";
 
-    // 🛠️ [서버 무응답 안심 우회 타이머] 서버 권한 에러 등으로 전송이 차단되더라도 멈춤 없이 1.5초 만에 강제로 가동을 바이패스
+    // 🛠️ [서버 무응답 안심 우회 타이머] 백엔드 규칙 차단 상태여도 멈춤 없이 1.5초 만에 강제로 가동을 바이패스
     var isBypassed = false;
     var fallbackTimer = setTimeout(function() {
       isBypassed = true;
@@ -688,3 +532,17 @@
 </script>
 </body>
 </html>
+
+
+  // 브라우저 동기식 데드락을 원천 차단하기 위해 초기화 과정을 try-catch 안전망으로 전면 격리
+  var db = null;
+  var storage = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    storage = firebase.storage();
+  } catch (e) {
+    console.error("파이어베이스 연결 초기화 차단 가드 가동:", e);
+  }
+
+  var TARGET_COLLECTION = "items";

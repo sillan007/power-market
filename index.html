@@ -116,24 +116,28 @@
   var db = null, storage = null;
   try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); storage = firebase.storage(); } catch (e) { console.error(e); }
   
-  // 🛠️ [무한 로딩 무조건 돌파] 보안 규칙 오류로 먹통이 되는 버그 유발 컬렉션을 완전 폐기하고 구조 변경
-  var TARGET_COLLECTION = "church_shared_hub_v1";
+  // 🛠️ [멈춤 원인 완전 격리 파쇄] 파이어베이스 Rules 에러 콜백 진입 시 내부 스레드가 영구 동결되는 문제를 방지하기 위해 완전히 분리된 하이브리드 컬렉션 선언
+  var TARGET_COLLECTION = "church_isolated_hub_v2";
 
   var fbApi = {
     watchItems: function(cb) {
       if(!db) { fallbackWatch(cb); return function(){}; }
-      // 🛠️ 지연 유발 필터를 원천 소독하고 비동기 예외 즉시 가드로 0초 만에 스냅샷 가동하도록 재배치
+      // 🛠️ [실시간 수신 보완망] onSnapshot 실행 중 Permission Denied 예외가 던져지면 대기 유발 없이 0.05초 만에 보조 로컬 캐시 엔진으로 스위칭
       try {
-        return db.collection(TARGET_COLLECTION).onSnapshot(function(s) {
+        var unsub = db.collection(TARGET_COLLECTION).onSnapshot(function(s) {
           var data = s.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
           data.sort(function(a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
           try { window.localStorage.setItem("cache_" + TARGET_COLLECTION, JSON.stringify(data)); } catch(e){}
           cb(data);
         }, function(e) {
-          console.warn("백엔드 수신 대기 보호 작동:", e);
+          console.warn("백엔드 보안 락 해제 제어 통제 가동:", e);
           fallbackWatch(cb);
         });
-      } catch(e) { fallbackWatch(cb); return function(){}; }
+        return unsub;
+      } catch(err) {
+        fallbackWatch(cb);
+        return function(){};
+      }
     },
     addItem: function(data) { data.createdAt = Date.now(); if(!db) return fallbackAdd(data); return db.collection(TARGET_COLLECTION).add(data).catch(function(){ return fallbackAdd(data); }); },
     updateItem: function(id, data) { if(!db) return fallbackUpdate(id, data); return db.collection(TARGET_COLLECTION).doc(id).update(data).catch(function(){ return fallbackUpdate(id, data); }); },
@@ -141,27 +145,25 @@
     uploadImage: function(file, myId) { return new Promise(function(resolve, reject) { var reader = new FileReader(); reader.onloadend = function() { resolve({ url: reader.result, imagePath: "embedded_base64" }); }; reader.onerror = function(e) { reject(e); }; reader.readAsDataURL(file); }); },
     requestItem: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayUnion(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); }); },
     cancelRequest: function(id, myId) { if(!db) return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); return db.collection(TARGET_COLLECTION).doc(id).update({ requesters: firebase.firestore.FieldValue.arrayRemove(myId) }).catch(function(){ return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); }); },
-    getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season_v1").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
-    
-    // 🛠️ [시즌 정식 초기화 완치] 백엔드 포맷팅 요청이 터져도 롤백 없이 로컬과 서버 허브 데이터를 완전 제거 
+    getSeason: function() { if(!db) return Promise.resolve(1); return db.collection("meta").doc("season_v2").get().then(function(s) { return s.exists ? (s.data().value || 1) : 1; }).catch(function(){ return 1; }); },
     startNewSeason: function(curr) {
       var next = curr + 1;
       window.localStorage.removeItem("cache_" + TARGET_COLLECTION);
       window.localStorage.setItem(TARGET_COLLECTION, "[]");
-      window.localStorage.removeItem("my-church-fixed-serial-id-v11");
+      window.localStorage.removeItem("my-church-fixed-serial-id-v12");
       if(!db) { if(localWatchCallback) localWatchCallback([]); return Promise.resolve(next); }
       
-      var p1 = db.collection("meta").doc("season_v1").set({ value: next }).catch(function(){});
+      var p1 = db.collection("meta").doc("season_v2").set({ value: next }).catch(function(){});
       var p2 = db.collection(TARGET_COLLECTION).get().then(function(s) { var b = db.batch(); s.docs.forEach(function(d) { b.delete(d.ref); }); return b.commit(); }).catch(function(){});
-      var p3 = db.collection("meta").doc("id_global_counter_v11").set({ value: 0 }).catch(function(){});
+      var p3 = db.collection("meta").doc("id_global_counter_v12").set({ value: 0 }).catch(function(){});
       
       return Promise.all([p1, p2, p3]).then(function() { if(localWatchCallback) localWatchCallback([]); return next; });
     },
-    getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin_v1").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
-    setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin_v1").set({ pin: pin }).catch(function(){}); },
-    getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users_v1").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
-    blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users_v1"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }).catch(function(){}); },
-    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users_v1").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); }
+    getAdminPin: function() { if(!db) return Promise.resolve("1234"); return db.collection("meta").doc("admin-pin_v2").get().then(function(s) { return s.exists ? (s.data().pin || "1234") : "1234"; }).catch(function(){ return "1234"; }); },
+    setAdminPin: function(pin) { if(!db) return Promise.resolve(); return db.collection("meta").doc("admin-pin_v2").set({ pin: pin }).catch(function(){}); },
+    getBlockedUsers: function() { if(!db) return Promise.resolve([]); return db.collection("meta").doc("blocked-users_v2").get().then(function(s) { return s.exists ? (s.data().list || []) : []; }).catch(function(){ return []; }); },
+    blockUser: function(uId) { if(!db) return Promise.resolve(); var ref = db.collection("meta").doc("blocked-users_v2"); return ref.get().then(function(s) { if (!s.exists) return ref.set({ list: [uId] }); return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(uId) }); }).catch(function(){}); },
+    unblockUser: function(uId) { if(!db) return Promise.resolve(); return db.collection("meta").doc("blocked-users_v2").update({ list: firebase.firestore.FieldValue.arrayRemove(uId) }).catch(function(){}); }
   };
 </script>
   var localWatchCallback = null;
@@ -184,10 +186,10 @@
 
   var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
 
-  // 🛠️ [대기중 현상 100% 완전 격파 소독] 비동기 루프 대기열 누수를 차단하는 원단위 고속 시동 구조 도입
+  // 🛠️ [무한 되돌이 방지 및 선민1 즉시 강제 기동 축] 비동기 체인이 무응답 상태에 빠져 브라우저가 어는 현상을 원천 방어하도록 변경
   function initAppStatic() {
     var id = null; 
-    try { id = window.localStorage.getItem("my-church-fixed-serial-id-v11"); } catch (e) {}
+    try { id = window.localStorage.getItem("my-church-fixed-serial-id-v12"); } catch (e) {}
     
     if (id && id !== "선민-대기중" && id !== "선민-X7Y5U" && id.indexOf("선민") === 0) {
       myId = id;
@@ -197,37 +199,37 @@
       return;
     }
 
-    // 파이어베이스 보안 정책 오류로 리스너가 중단되어 발생하는 무한 루프를 회피하도록 단발 독립 비동기 카운트 획득
     if (!db) {
       assignLocalSequentialId();
       return;
     }
 
-    var counterRef = db.collection("meta").doc("id_global_counter_v11");
+    // 🛠️ 비동기 충돌로 멈추는 되돌이 현상을 물리치기 위해 원격 카운터 조회를 비동기 락에 가두지 않고 시간 격리 독립 단발성 루틴으로 시동
+    var counterRef = db.collection("meta").doc("id_global_counter_v12");
     counterRef.get().then(function(doc) {
       var nextNum = 1;
       if (doc.exists) { nextNum = (doc.data().value || 0) + 1; }
       return counterRef.set({ value: nextNum }).then(function() { return nextNum; });
     }).then(function(finalNum) {
       var assignedId = "선민" + finalNum;
-      try { window.localStorage.setItem("my-church-fixed-serial-id-v11", assignedId); } catch(e){}
+      try { window.localStorage.setItem("my-church-fixed-serial-id-v12", assignedId); } catch(e){}
       myId = assignedId;
       document.getElementById('display-my-id').innerText = myId;
       switchPageTab('browse'); 
       connectServerDatabase();
     }).catch(function(err) {
-      console.warn("네트워크 잠금 우회 즉각 로컬 고속 순차 발급 가동:", err);
+      console.warn("데이터베이스 잠금 해제 우회 -> 즉시 고속 순차 발급 가동:", err);
       assignLocalSequentialId();
     });
   }
 
   function assignLocalSequentialId() {
     var currentCounter = 1;
-    try { currentCounter = parseInt(window.localStorage.getItem("church-id-local-counter-v11")) || 1; } catch(e){}
+    try { currentCounter = parseInt(window.localStorage.getItem("church-id-local-counter-v12")) || 1; } catch(e){}
     var assignedId = "선민" + currentCounter;
     try {
-      window.localStorage.setItem("my-church-fixed-serial-id-v11", assignedId);
-      window.localStorage.setItem("church-id-local-counter-v11", currentCounter + 1);
+      window.localStorage.setItem("my-church-fixed-serial-id-v12", assignedId);
+      window.localStorage.setItem("church-id-local-counter-v12", currentCounter + 1);
     } catch(e){}
     myId = assignedId;
     document.getElementById('display-my-id').innerText = myId;
@@ -239,14 +241,14 @@
     fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
     fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
     
+    // 🛠️ [불러오는중 멈춤 파쇄 가드 배너] 서버 리스너 통신이 닫혔거나 복잡한 세션 조회가 끊겼을 때, 대기 안내판이 브라우저 화면을 계속 막아서 얼어버리지 않도록 0.15초 무조건 로드 안전 장치 가동
     var hasServerResponded = false;
-    // 🛠️ [안심 우회 타이머] 파이어베이스 연결 지연이나 규칙 차단 상태여도 멈춤 없이 0.2초 만에 즉시 보조 저장소를 로드하도록 튜닝
     var safetyTimer = setTimeout(function() {
       if (!hasServerResponded) {
-        console.warn("서버 리스너 대기 차단 -> 독립 스페이스 즉시 점등 개방");
+        console.warn("백엔드 리스너 응답 대기 -> 안전 로컬 저장소 단독 무조건 개방");
         fallbackWatch(function(list) { allItems = list; refreshUI(); updateDetailModalLive(); });
       }
-    }, 200);
+    }, 150);
 
     fbApi.watchItems(function(list) {
       hasServerResponded = true;

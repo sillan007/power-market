@@ -1,8 +1,8 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (파이어베이스 동기 락 완치 · 탭 및 ID 즉시 강제 정착 최종본)
+  나눔의 자리 - 교회 나눔 웹앱 (서버 거부 락 완전 타파 · 탭 및 ID 즉시 강제 활성화판)
   
   사용 방법:
-  1부부터 4부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
+  1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
 -->
 <!DOCTYPE html>
 <html lang="ko">
@@ -10,7 +10,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<!-- 최신 독립형 모듈 파싱 차단 에러를 방지하는 표준 핵심 코어 라이브러리 배치 -->
+<!-- 파이어베이스 호환성 표준 스크립트 CDN 결속 (CORS 로컬 차단 무조건 파괴) -->
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
 <script src="https://gstatic.com"></script>
@@ -167,30 +167,43 @@
     measurementId: "G-59F20MY2ST"
   };
 
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.firestore();
-  var storage = firebase.storage();
+  // 브라우저 데드락을 원천 차단하기 위해 초기화 과정을 try-catch 안전망으로 완전 격리
+  var db = null;
+  var storage = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    storage = firebase.storage();
+  } catch (e) {
+    console.error("파이어베이스 초기화 거부 유도 차단 가드 가동:", e);
+  }
+
+  var TARGET_COLLECTION = "items";
 
   var fbApi = {
     watchItems: function(cb) {
-      return db.collection("items").orderBy("createdAt", "desc").onSnapshot(function(snap) {
+      if (!db) return function(){};
+      return db.collection(TARGET_COLLECTION).orderBy("createdAt", "desc").onSnapshot(function(snap) {
         cb(snap.docs.map(function(d) {
           return Object.assign({ id: d.id }, d.data());
         }));
       }, function(error) {
-        console.warn("Firestore 라이브 리스너 대기 중:", error);
+        console.warn("Firestore 라이브 리스너 대기 중 또는 권한 유실 잠금:", error);
       });
     },
     addItem: function(data) {
+      if (!db) return Promise.reject("서버 미연동");
       data.createdAt = Date.now();
-      return db.collection("items").add(data);
+      return db.collection(TARGET_COLLECTION).add(data);
     },
     updateItem: function(id, data) {
-      return db.collection("items").doc(id).update(data);
+      if (!db) return Promise.reject("서버 미연동");
+      return db.collection(TARGET_COLLECTION).doc(id).update(data);
     },
     deleteItem: function(id, imagePath) {
-      var p1 = db.collection("items").doc(id).delete();
-      if (imagePath) {
+      if (!db) return Promise.reject("서버 미연동");
+      var p1 = db.collection(TARGET_COLLECTION).doc(id).delete();
+      if (imagePath && storage) {
         var p2 = storage.ref(imagePath).delete().catch(function(e) {
           console.error("Storage 이미지 파일 파기 실패:", e);
         });
@@ -199,6 +212,7 @@
       return p1;
     },
     uploadImage: function(file, myId) {
+      if (!storage) return Promise.reject("저장소 미연동");
       var imagePath = 'items/' + Date.now() + '_' + myId;
       var fileRef = storage.ref(imagePath);
       return fileRef.put(file).then(function() {
@@ -208,16 +222,19 @@
       });
     },
     requestItem: function(id, myId) {
-      return db.collection("items").doc(id).update({
+      if (!db) return Promise.reject("서버 미연동");
+      return db.collection(TARGET_COLLECTION).doc(id).update({
         requesters: firebase.firestore.FieldValue.arrayUnion(myId)
       });
     },
     cancelRequest: function(id, myId) {
-      return db.collection("items").doc(id).update({
+      if (!db) return Promise.reject("서버 미연동");
+      return db.collection(TARGET_COLLECTION).doc(id).update({
         requesters: firebase.firestore.FieldValue.arrayRemove(myId)
       });
     },
     getSeason: function() {
+      if (!db) return Promise.resolve(1);
       var ref = db.collection("meta").doc("season");
       return ref.get().then(function(snap) {
         if (!snap.exists) {
@@ -227,9 +244,10 @@
       }).catch(function() { return 1; });
     },
     startNewSeason: function(currentSeason) {
+      if (!db) return Promise.reject("서버 미연동");
       var nextSeason = currentSeason + 1;
       var p1 = db.collection("meta").doc("season").set({ value: nextSeason });
-      var p2 = db.collection("items").get().then(function(snap) {
+      var p2 = db.collection(TARGET_COLLECTION).get().then(function(snap) {
         var batch = db.batch();
         snap.docs.forEach(function(d) { batch.delete(d.ref); });
         return batch.commit();
@@ -237,32 +255,37 @@
       return Promise.all([p1, p2]).then(function() { return nextSeason; });
     },
     getAdminPin: function() {
+      if (!db) return Promise.resolve("1234");
       var ref = db.collection("meta").doc("admin-pin");
       return ref.get().then(function(snap) {
-        if (!snap.exists()) {
+        if (!snap.exists) {
           return ref.set({ pin: "1234" }).then(function() { return "1234"; });
         }
         return snap.data().pin || "1234";
       }).catch(function() { return "1234"; });
     },
     setAdminPin: function(newPin) {
+      if (!db) return Promise.reject("서버 미연동");
       return db.collection("meta").doc("admin-pin").set({ pin: newPin });
     },
     getBlockedUsers: function() {
+      if (!db) return Promise.resolve([]);
       var ref = db.collection("meta").doc("blocked-users");
       return ref.get().then(function(snap) {
-        if (!snap.exists()) return [];
+        if (!snap.exists) return [];
         return snap.data().list || [];
       }).catch(function() { return []; });
     },
     blockUser: function(userId) {
+      if (!db) return Promise.reject("서버 미연동");
       var ref = db.collection("meta").doc("blocked-users");
       return ref.get().then(function(snap) {
-        if (!snap.exists()) return ref.set({ list: [userId] });
+        if (!snap.exists) return ref.set({ list: [userId] });
         return ref.update({ list: firebase.firestore.FieldValue.arrayUnion(userId) });
       });
     },
     unblockUser: function(userId) {
+      if (!db) return Promise.reject("서버 미연동");
       return db.collection("meta").doc("blocked-users").update({
         list: firebase.firestore.FieldValue.arrayRemove(userId)
       });
@@ -279,7 +302,7 @@
   var blockedUsers = [];
   var ID_PREFIX = "선민";
 
-  // 🛠️ 서버의 컬렉션 유무나 응답 지연을 완벽 무시하고 0.1초 만에 기기를 즉시 깨워내는 비동기 독립 가동소
+  // 🛠️ 서버가 꺼져 있거나 에러가 터져도 0.1초 만에 기기를 즉시 깨워내는 비동기 독립 가동소
   function initAppStatic() {
     var id = null;
     try {
@@ -526,7 +549,7 @@
   });
 
   document.getElementById('admin-reset-season-btn').addEventListener('click', function() {
-    if (confirm("주의! 시즌 마감 시 현재 백엔드 원장이 전체 폭파 및 초기화됩니다. 계속할까요?")) {
+    if (confirm("주의! 시즌 마감 시 현재 백엔드 원장이 전체 초기화됩니다. 계속할까요?")) {
       fbApi.startNewSeason(season).then(function(nextSeason) { season = nextSeason; document.getElementById('display-season').innerText = season; showToast("새 시즌 시작."); switchPageTab('browse'); });
     }
   });
@@ -567,9 +590,9 @@
     if (file) {
       fbApi.uploadImage(file, myId).then(function(res) {
         return fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: "etc", giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open", image: res.url, imagePath: res.imagePath });
-      }).then(function() { finishPost(); });
+      }).then(function() { finishPost(); }).catch(function() { alert("서버 연동 실패로 등록 불가"); });
     } else {
-      fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: "etc", giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open", image: "", imagePath: "" }).then(function() { finishPost(); });
+      fbApi.addItem({ title: titleVal.trim(), desc: descVal.trim(), category: "etc", giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open", image: "", imagePath: "" }).then(function() { finishPost(); }).catch(function() { alert("서버 연동 실패로 등록 불가"); });
     }
   });
 
@@ -584,7 +607,7 @@
     switchPageTab('browse');
   }
 
-  // 문서 구조 해석이 끝나는 즉시 0.1초 만에 탭 점등 및 기기 고정 ID 동시 강제 가동
+  // 🛠️ 파이어베이스 서버 엔진 오류와 100% 무관하게 무조건 즉시 독자 구동 개시
   initAppStatic();
 </script>
 </body>

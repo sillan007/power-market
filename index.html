@@ -1,5 +1,5 @@
 <!--
-  나눔의 자리 - 교회 나눔 웹앱 (6부 구성 완전 무결점 오리지널 최종본)
+  나눔의 자리 - 교회 나눔 웹앱 (자폭 오타 완전 완치 및 백엔드 락 프리 최종본)
   
   사용 방법:
   1부부터 6부까지 하나의 파일로 메모장에 순서대로 다른 글자 없이 쭉 이어서 붙여넣고 index.html로 저장하세요.
@@ -137,7 +137,7 @@
   </div>
 </div>
 
-<!-- 마스터 암호 별표(*) 은닉 창 모달 레이아웃 -->
+<!-- 비밀번호 숨김 별표 입력 보안 모달 팝업 본체 -->
 <div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
   <div class="pwd-box">
     <div style="font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px;">🔒 관리자 비밀번호 입력</div>
@@ -271,14 +271,6 @@
   let isAdminAuthed = false;
   let blockedUsers = [];
   const ID_PREFIX = "선민";
-
-  function showToast(msg) {
-    const el = document.getElementById('toast-message');
-    if (!el) return;
-    el.innerText = msg;
-    el.style.display = 'block';
-    setTimeout(function() { el.style.display = 'none'; }, 2200);
-  }
 
   // 🛠️ 서버 지연을 완벽 무시하고 기기에서 0.1초 만에 ID를 부여 및 탭 메뉴를 강제 점등하는 완치형 가동소
   function initAppStatic() {
@@ -527,7 +519,7 @@
 
   document.getElementById('admin-reset-season-btn').addEventListener('click', function() {
     if (confirm("주의! 시즌 마감 시 현재 백엔드 기부 원장이 전체 폭파 및 전면 포맷팅 초기화됩니다. 계속할까요?")) {
-      fbApi.startNewSeason(season).then(function(ns) { season = ns; document.getElementById('display-season').innerText = season; showToast("새 시즌 시작."); switchPageTab('browse'); });
+      fbApi.startNewSeason(season).then(function(nextSeason) { season = nextSeason; document.getElementById('display-season').innerText = season; showToast("새 시즌 시작."); switchPageTab('browse'); });
     }
   });
 
@@ -584,95 +576,8 @@
     switchPageTab('browse');
   }
 
-  // 문서가 끝까지 한 줄씩 파싱 완공되는 즉시 0.1초 만에 최우선 강제 가동
+  // 문서 구조 해석이 완료되는 즉시 0.1초 만에 탭 점등 및 기기 고정 ID 동시 강제 가동
   initAppStatic();
-</script>
-</body>
-</html>
-quest(this.getAttribute('data-id')); });
-    });
-
-    document.querySelectorAll('.item-cancel-req-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { handleCancelRequest(this.getAttribute('data-id')); });
-    });
-
-    var fileInput = document.getElementById('form-image');
-    if (fileInput) {
-      fileInput.addEventListener('change', function() {
-        if (this.files && this.files[0]) {
-          var area = document.getElementById('image-preview-area');
-          var img = document.getElementById('form-preview-img');
-          if (area && img) {
-            area.style.display = 'block';
-            img.src = URL.createObjectURL(this.files[0]);
-          }
-        }
-      });
-    }
-
-    var postSubmitBtn = document.getElementById('post-submit-btn');
-    if (postSubmitBtn) {
-      postSubmitBtn.addEventListener('click', function() {
-        var titleVal = document.getElementById('form-title').value;
-        var descVal = document.getElementById('form-desc').value;
-        var fileIn = document.getElementById('form-image');
-        var file = fileIn && fileIn.files && fileIn.files[0];
-
-        if (!titleVal.trim()) { alert("물품 이름을 입력하세요."); return; }
-        this.disabled = true;
-        this.innerText = "🚀 사진 및 나눔 물품 등록 중...";
-
-        if (file && window.fbApi) {
-          window.fbApi.uploadImage(file, myId).then(function(res) {
-            window.fbApi.addItem({
-              title: titleVal.trim(), desc: descVal.trim(), category: "etc",
-              giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
-              image: res.url, imagePath: res.imagePath
-            }).then(function() { showToast("나눔 물품이 등록되었어요."); switchTab('browse'); });
-          });
-        } else if (window.fbApi) {
-          window.fbApi.addItem({
-            title: titleVal.trim(), desc: descVal.trim(), category: "etc",
-            giverId: myId, requesters: [], selectedReceiverId: null, dropOffDate: null, status: "open",
-            image: "", imagePath: ""
-          }).then(function() { showToast("나눔 물품이 등록되었어요."); switchTab('browse'); });
-        }
-      });
-    }
-
-    document.querySelectorAll('.mine-match-item-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        handleSelectReceiverPrompt(this.getAttribute('data-id'));
-      });
-    });
-
-    document.querySelectorAll('.mine-cancel-item-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        if (confirm("이 물품 나눔을 취소하시겠습니까? 게시글과 이미지 파일이 영구 삭제됩니다.") && window.fbApi) {
-          window.fbApi.deleteItem(this.getAttribute('data-id'), this.getAttribute('data-path')).then(function() {
-            showToast("나눔 등록을 취소했습니다.");
-          });
-        }
-      });
-    });
-
-    var adminExitBtn = document.getElementById('admin-exit-btn');
-    if (adminExitBtn) adminExitBtn.addEventListener('click', function() { switchTab('browse'); });
-
-    var adminChangePinBtn = document.getElementById('admin-change-pin-btn');
-    if (adminChangePinBtn) adminChangePinBtn.addEventListener('click', handleAdminChangePin);
-
-    var adminResetSeasonBtn = document.getElementById('admin-reset-season-btn');
-    if (adminResetSeasonBtn) adminResetSeasonBtn.addEventListener('click', function() { handleAdminDeleteSeason(season); });
-
-    document.querySelectorAll('.admin-force-delete-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { handleAdminForceDelete(this.getAttribute('data-id'), this.getAttribute('data-path')); });
-    });
-
-    document.querySelectorAll('.admin-toggle-block-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() { handleAdminToggleBlock(this.getAttribute('data-userid')); });
-    });
-  }
 </script>
 </body>
 </html>

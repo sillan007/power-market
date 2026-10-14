@@ -204,19 +204,15 @@
   // ★ 1) 여기에 Firebase 콘솔의 "웹 앱 설정값"을 붙여넣으세요.
   //    (프로젝트 설정 → 일반 → 내 앱 → SDK 설정 및 구성)
   // ============================================================
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
-  authDomain: "power-market-f9573.firebaseapp.com",
-  projectId: "power-market-f9573",
-  storageBucket: "power-market-f9573.firebasestorage.app",
-  messagingSenderId: "1005808106144",
-  appId: "1:1005808106144:web:faef2e17c612833aec67c5",
-  measurementId: "G-59F20MY2ST"
-};
-
+  var FIREBASE_CONFIG = {
+   apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
+    authDomain: "power-market-f9573.firebaseapp.com",
+    projectId: "power-market-f9573",
+    storageBucket: "power-market-f9573.firebasestorage.app",
+    messagingSenderId: "1005808106144",
+    appId: "1:1005808106144:web:faef2e17c612833aec67c5",
+    measurementId: "G-59F20MY2ST"
+  };
 
   var DEFAULT_PIN = '1234';          // 처음 한 번만 쓰는 기본 관리자 비밀번호 (진입 후 꼭 변경하세요)
   var WEEK = 7 * 24 * 60 * 60 * 1000; // 매칭 후 자동 삭제까지의 시간
@@ -278,9 +274,43 @@ const firebaseConfig = {
     try {
       firebase.initializeApp(FIREBASE_CONFIG);
       db = firebase.firestore(); FV = firebase.firestore.FieldValue;
-    } catch (e) { banner('Firebase 초기화 실패: ' + (e.message || e)); return; }
-    ensureIdentity().then(watchAll).catch(onWatchError);
+      // 카카오톡 인앱 브라우저·교회 와이파이 등 일반 연결이 막힌 환경에서 자동으로 우회 연결
+      try { db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); } catch (e2) {}
+    } catch (e) { banner('Firebase 초기화 실패: ' + (e.message || e)); $('my-id').textContent = '연결 실패'; $('browse-list').innerHTML = ''; return; }
+    $('my-id').textContent = '연결 중...';
+    connect();
     setInterval(cleanupExpired, 10 * 60 * 1000);
+  }
+
+  // ---------- 서버 연결 (실패하면 원인을 보여주고 20초마다 자동 재시도) ----------
+  var watching = false, retryTimer = null, identityPromise = null;
+  function ensureIdentityOnce() {
+    if (!identityPromise) identityPromise = ensureIdentity().catch(function (e) { identityPromise = null; throw e; });
+    return identityPromise;
+  }
+  function connect() {
+    if (watching) return;
+    clearTimeout(retryTimer);
+    var wd = setTimeout(function () { connectFail({ code: 'timeout' }); }, 15000);
+    ensureIdentityOnce().then(function () {
+      clearTimeout(wd);
+      if (!watching) { watching = true; banner(''); watchAll(); }
+    }).catch(function (e) { clearTimeout(wd); connectFail(e); });
+  }
+  function connectFail(e) {
+    if (watching) return;
+    var code = (e && (e.code || e.message)) || '알 수 없음';
+    $('my-id').textContent = '연결 실패';
+    $('browse-list').innerHTML = '<div class="empty">서버에 연결하지 못했어요.<br/>자동으로 다시 시도하고 있어요...</div>';
+    var first = code === 'permission-denied'
+      ? 'Firestore 규칙(Rules)이 읽기/쓰기를 막고 있어요.'
+      : '서버에 연결하지 못했어요.';
+    banner(first + ' (오류: ' + code + ')\n연결 대상 프로젝트: ' + FIREBASE_CONFIG.projectId +
+      '\n\n확인해 주세요\n1) Firebase 콘솔 → Firestore Database에서 "데이터베이스 만들기"까지 끝났는지' +
+      '\n2) 위 프로젝트 이름이 내 Firebase 프로젝트와 같은지 (다르면 FIREBASE_CONFIG를 다시 복사)' +
+      '\n3) Firestore → 규칙(Rules)이 읽기/쓰기를 허용하는지 (테스트 모드는 30일 뒤 만료)' +
+      '\n4) 카카오톡 등 앱 안에서 열었다면 크롬/사파리에서 열어 보기');
+    clearTimeout(retryTimer); retryTimer = setTimeout(connect, 20000);
   }
 
   // ---------- 아이디 부여: 접속 순서대로 선민1, 선민2 ... (기기에 영구 저장) ----------

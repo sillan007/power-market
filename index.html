@@ -154,6 +154,9 @@
         <div class="admin-head"><h3>⚙️ 관리자 메뉴</h3><button class="cancel-btn" style="padding:4px 10px; font-size:12px;" data-act="exit">나가기</button></div>
         <div class="admin-sub-title">비밀번호 재설정</div>
         <button class="select-btn wide" data-act="change-pin">🔒 관리자 비밀번호 변경</button>
+        <div class="admin-sub-title">알림 서버 점검</div>
+        <button class="select-btn wide" data-act="check-push">🔍 알림 서버 연결 점검</button>
+        <div class="hint" style="margin-top:6px;">아래 유저 목록의 "알림 테스트" 버튼으로 특정 기기에 테스트 알림을 보낼 수 있어요. (알림을 켠 기기에만 표시)</div>
         <div class="admin-sub-title">게시물 삭제</div>
         <div id="admin-items"></div>
         <div class="admin-sub-title">유저 퇴출</div>
@@ -516,7 +519,7 @@
     }).join('') : '<div class="muted">등록된 글이 없어요.</div>';
     var us = users.slice().sort(function (a, b) { return (a.num || 0) - (b.num || 0); });
     ub.innerHTML = us.length ? us.map(function (u) {
-      return '<div class="admin-list-item"><div class="grow">👤 <strong>' + esc(u.id) + '</strong>' + (u.blocked ? ' <span style="color:#B34A4A; font-weight:bold;">[퇴출됨]</span>' : '') + '</div><button class="danger-btn" style="background:' + (u.blocked ? '#4C5C3E' : '#B34A4A') + ';" data-act="' + (u.blocked ? 'admin-unblock' : 'admin-block') + '" data-who="' + esc(u.id) + '">' + (u.blocked ? '복구' : '퇴출') + '</button></div>';
+      return '<div class="admin-list-item"><div class="grow">👤 <strong>' + esc(u.id) + '</strong>' + (u.blocked ? ' <span style="color:#B34A4A; font-weight:bold;">[퇴출됨]</span>' : '') + '</div><div style="display:flex; gap:4px; flex:none;">' + (u.pushSub ? '<button class="danger-btn" style="background:#5C6E4B;" data-act="admin-test" data-who="' + esc(u.id) + '">알림 테스트</button>' : '') + '<button class="danger-btn" style="background:' + (u.blocked ? '#4C5C3E' : '#B34A4A') + ';" data-act="' + (u.blocked ? 'admin-unblock' : 'admin-block') + '" data-who="' + esc(u.id) + '">' + (u.blocked ? '복구' : '퇴출') + '</button></div></div>';
     }).join('') : '<div class="muted">유저가 없어요.</div>';
   }
 
@@ -683,6 +686,32 @@
     }).then(function () { lsDel('sm_id'); lsDel('sm_epoch'); lsDel('sm_notify'); isAdmin = false; window.location.reload(); }));
   }
 
+  // ---------- 알림 서버 점검 / 테스트 알림 (관리자 전용) ----------
+  function workerFail() { alert('알림 서버에 접속하지 못했어요.\n\n- config.js 의 workerUrl 주소가 맞는지\n- Cloudflare 의 ALLOWED_ORIGIN 이 https://아이디.github.io 형태(뒤에 / 나 경로 없이)인지\n확인해 주세요.'); }
+  function checkPush() {
+    if (!WORKER_URL) { alert('config.js 의 workerUrl 이 비어 있어요. Cloudflare Worker 주소를 넣어 주세요.'); return; }
+    fetch(WORKER_URL + '/?check=1').then(function (r) { return r.json(); }).then(function (d) {
+      var c = d.configured || {}, r = d.firestoreRead || {}, w = d.firestoreWrite || {};
+      function mark(b) { return b ? '✓' : '✗'; }
+      var lines = ['알림 서버 점검 결과', '', '• 서버 접속: ✓',
+        '• 설정값: 공개키 ' + mark(c.VAPID_PUBLIC) + ' / 비공개키 ' + mark(c.VAPID_PRIVATE) + ' / 이메일 ' + mark(c.VAPID_SUBJECT) + ' / 허용주소 ' + mark(c.ALLOWED_ORIGIN),
+        '• 데이터베이스 읽기: ' + mark(r.status === 200) + ' (코드 ' + r.status + ')',
+        '• 데이터베이스 쓰기: ' + mark(w.status === 200) + ' (코드 ' + w.status + ')', ''];
+      var bad = false;
+      if (!(c.VAPID_PUBLIC && c.VAPID_PRIVATE && c.VAPID_SUBJECT && c.ALLOWED_ORIGIN)) { bad = true; lines.push('→ ✗ 표시된 변수를 Cloudflare 의 Variables and Secrets 에 입력하고 Deploy 해 주세요.'); }
+      if (r.status !== 200 || w.status !== 200) { bad = true; lines.push('→ 서버가 데이터베이스에 접근하지 못했어요. 코드가 403 이면 Cloudflare 변수에 FIREBASE_API_KEY(config.js 의 apiKey 값)를 추가하고 Deploy, 404 이면 프로젝트 이름(' + d.project + ')을 확인해 주세요.'); }
+      if (!bad) lines.push('모두 정상이에요! 이제 아래 유저 목록의 "알림 테스트"를 눌러 보세요.');
+      alert(lines.join('\n'));
+    }).catch(workerFail);
+  }
+  function testPush(who) {
+    if (!WORKER_URL) { alert('config.js 의 workerUrl 이 비어 있어요.'); return; }
+    fetch(WORKER_URL + '/', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ test: true, id: who }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { alert((d.ok ? '✓ ' : '✗ ') + who + '\n\n' + (d.message || JSON.stringify(d))); })
+      .catch(workerFail);
+  }
+
   // ---------- 이벤트 ----------
   document.addEventListener('click', function (e) {
     var el = e.target.closest ? e.target.closest('[data-act]') : null; if (!el) return;
@@ -710,6 +739,8 @@
       case 'admin-block': setBlocked(who, true); break;
       case 'admin-unblock': setBlocked(who, false); break;
       case 'reset': resetAll(); break;
+      case 'check-push': checkPush(); break;
+      case 'admin-test': testPush(who); break;
     }
   });
   $('gate-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitGate(); });

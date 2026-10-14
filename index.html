@@ -212,7 +212,13 @@
   // 설정값은 config.js 에서 읽어 옵니다. (Firebase 설정, 푸시 서버 주소, 공개 키)
   var CFG = window.APP_CONFIG || {};
   var FIREBASE_CONFIG = CFG.firebase || {};
-  var WORKER_URL = String(CFG.workerUrl || '').replace(/\/+$/, '');
+  function normUrl(u) {
+    u = String(u || '').trim().replace(/^["']+|["']+$/g, '');
+    if (!u) return '';
+    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;     // https:// 를 빼먹어도 자동으로 붙임
+    try { return new URL(u).origin; } catch (e) { return u.replace(/\/+$/, ''); }   // 뒤에 붙은 경로(/notify 등)는 제거
+  }
+  var WORKER_URL = normUrl(CFG.workerUrl);
   var VAPID_PUBLIC_KEY = String(CFG.vapidPublicKey || '');
 
   var DEFAULT_PIN = '1234';          // 처음 한 번만 쓰는 기본 관리자 비밀번호 (진입 후 꼭 변경하세요)
@@ -687,27 +693,47 @@
   }
 
   // ---------- 알림 서버 점검 / 테스트 알림 (관리자 전용) ----------
-  function workerFail() { alert('알림 서버에 접속하지 못했어요.\n\n- config.js 의 workerUrl 주소가 맞는지\n- Cloudflare 의 ALLOWED_ORIGIN 이 https://아이디.github.io 형태(뒤에 / 나 경로 없이)인지\n확인해 주세요.'); }
+  function callWorker(path, opts) {
+    var url = WORKER_URL + path;
+    return fetch(url, opts).then(function (res) {
+      return res.text().then(function (txt) {
+        var data = null; try { data = JSON.parse(txt); } catch (e) {}
+        if (!data) { var err = new Error('notjson'); err.status = res.status; err.url = url; throw err; }
+        return data;
+      });
+    }, function () {
+      var err = new Error('network'); err.url = url;
+      // 읽기 제한 없이 한 번 더 시도해서 "주소 문제"인지 "접근 제한 문제"인지 구분
+      return fetch(url, { mode: 'no-cors' }).then(function () { err.reachable = true; throw err; }, function () { err.reachable = false; throw err; });
+    });
+  }
+  function workerFail(err) {
+    var u = (err && err.url) || WORKER_URL, why;
+    if (err && err.message === 'notjson') why = '이 주소는 알림 서버가 아닌 것 같아요 (응답 코드 ' + err.status + ').\n→ config.js 의 workerUrl 에 Cloudflare Worker 주소가 정확히 들어갔는지 확인해 주세요.';
+    else if (err && err.reachable) why = '서버는 살아 있는데 이 사이트의 접근이 막혀 있어요.\n→ Cloudflare 에 ALLOWED_ORIGIN 변수가 있다면 삭제하고 Deploy 하거나, 값을 https://아이디.github.io 형태로 고쳐 주세요.';
+    else why = '이 주소에 닿지 못했어요.\n→ config.js 의 workerUrl 철자를 Cloudflare 화면의 주소와 비교해 주세요. (https:// 로 시작, 뒤에 다른 글자 없이)';
+    alert('알림 서버에 접속하지 못했어요.\n\n시도한 주소:\n' + u + '\n\n' + why);
+  }
   function checkPush() {
     if (!WORKER_URL) { alert('config.js 의 workerUrl 이 비어 있어요. Cloudflare Worker 주소를 넣어 주세요.'); return; }
-    fetch(WORKER_URL + '/?check=1').then(function (r) { return r.json(); }).then(function (d) {
+    callWorker('/?check=1').then(function (d) {
       var c = d.configured || {}, r = d.firestoreRead || {}, w = d.firestoreWrite || {};
       function mark(b) { return b ? '✓' : '✗'; }
       var lines = ['알림 서버 점검 결과', '', '• 서버 접속: ✓',
-        '• 설정값: 공개키 ' + mark(c.VAPID_PUBLIC) + ' / 비공개키 ' + mark(c.VAPID_PRIVATE) + ' / 이메일 ' + mark(c.VAPID_SUBJECT) + ' / 허용주소 ' + mark(c.ALLOWED_ORIGIN),
+        '• 설정값: 공개키 ' + mark(c.VAPID_PUBLIC) + ' / 비공개키 ' + mark(c.VAPID_PRIVATE) + ' / 이메일 ' + mark(c.VAPID_SUBJECT),
         '• 데이터베이스 읽기: ' + mark(r.status === 200) + ' (코드 ' + r.status + ')',
         '• 데이터베이스 쓰기: ' + mark(w.status === 200) + ' (코드 ' + w.status + ')', ''];
       var bad = false;
-      if (!(c.VAPID_PUBLIC && c.VAPID_PRIVATE && c.VAPID_SUBJECT && c.ALLOWED_ORIGIN)) { bad = true; lines.push('→ ✗ 표시된 변수를 Cloudflare 의 Variables and Secrets 에 입력하고 Deploy 해 주세요.'); }
-      if (r.status !== 200 || w.status !== 200) { bad = true; lines.push('→ 서버가 데이터베이스에 접근하지 못했어요. 코드가 403 이면 Cloudflare 변수에 FIREBASE_API_KEY(config.js 의 apiKey 값)를 추가하고 Deploy, 404 이면 프로젝트 이름(' + d.project + ')을 확인해 주세요.'); }
+      if (d.firestoreRead === undefined) { bad = true; lines.push('→ Cloudflare 의 worker.js 가 예전 버전이에요. 새 worker.js 를 붙여넣고 Deploy 해 주세요.'); }
+      if (!(c.VAPID_PUBLIC && c.VAPID_PRIVATE && c.VAPID_SUBJECT)) { bad = true; lines.push('→ ✗ 표시된 변수를 Cloudflare 의 Variables and Secrets 에 입력하고 Deploy 해 주세요.'); }
+      if (d.firestoreRead !== undefined && (r.status !== 200 || w.status !== 200)) { bad = true; lines.push('→ 서버가 데이터베이스에 접근하지 못했어요. 코드가 403 이면 Cloudflare 변수에 FIREBASE_API_KEY(config.js 의 apiKey 값)를 추가하고 Deploy, 404 이면 프로젝트 이름(' + d.project + ')을 확인해 주세요.'); }
       if (!bad) lines.push('모두 정상이에요! 이제 아래 유저 목록의 "알림 테스트"를 눌러 보세요.');
       alert(lines.join('\n'));
     }).catch(workerFail);
   }
   function testPush(who) {
     if (!WORKER_URL) { alert('config.js 의 workerUrl 이 비어 있어요.'); return; }
-    fetch(WORKER_URL + '/', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ test: true, id: who }) })
-      .then(function (r) { return r.json(); })
+    callWorker('/', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ test: true, id: who }) })
       .then(function (d) { alert((d.ok ? '✓ ' : '✗ ') + who + '\n\n' + (d.message || JSON.stringify(d))); })
       .catch(workerFail);
   }

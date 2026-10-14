@@ -4,449 +4,624 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
-<link href="https://googleapis.com" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&display=swap" rel="stylesheet" />
 <style>
-  * { box-sizing: border-box; } html, body { margin: 0; padding: 0; background: #EDE7D6; font-family: 'Noto Sans KR', sans-serif; color: #2A2823; }
-  button { font-family: inherit; cursor: pointer; border: none; transition: opacity 0.2s; } button:active { opacity: 0.7; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #EDE7D6; font-family: 'Noto Sans KR', sans-serif; color: #2A2823; }
+  button { font-family: inherit; cursor: pointer; border: none; transition: opacity 0.2s; }
+  button:active { opacity: 0.7; }
+  button:disabled { opacity: 0.5; cursor: default; }
   #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #FAF6EE; box-shadow: 0 0 0 1px #ECE4D2; position: relative; padding-bottom: 80px; }
-  .header-bar { background: #8B7E66; color: white; padding: 24px 20px; text-align: center; }
+
+  .header-bar { position: relative; background: #8B7E66; color: white; padding: 24px 20px; text-align: center; }
   .header-title { margin: 0; font-size: 22px; font-family: 'Noto Serif KR', serif; }
   .header-info { font-size: 13px; opacity: 0.85; margin-top: 5px; }
+  .gear-btn { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; padding: 5px; background: none; color: white; opacity: 0.55; border-radius: 50%; }
+  .gear-btn svg { width: 100%; height: 100%; display: block; }
+
   .tab-container { display: flex; background: #F0EAE1; border-bottom: 1px solid #ECE4D2; }
   .tab-btn { flex: 1; padding: 14px 4px; background: none; color: #A39C8C; font-weight: 500; font-size: 14px; text-align: center; }
-  .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 600; }
-  .content-area { padding: 20px 16px; } .app-page { display: none; } .app-page.active { display: block; }
-  .item-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; margin-bottom: 12px; cursor: pointer; }
-  .card-top { margin-bottom: 6px; display: flex; align-items: center; }
-  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
-  .badge.give { background: #EAF0E3; color: #4C5C3E; } .badge.ask { background: #FFF3CD; color: #856404; } .badge.matched { background: #ECEFF1; color: #607D8B; }
-  .form-group { margin-bottom: 18px; } .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
-  .form-input, .form-textarea { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14px; }
+  .tab-btn.active { background: #FAF6EE; color: #2A2823; font-weight: 700; }
+
+  .content-area { padding: 20px 16px; }
+  .app-page { display: none; }
+  .app-page.active { display: block; }
+
+  .tool-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+  .tool-btn { background: #ECE4D2; color: #555; padding: 6px 12px; border-radius: 7px; font-size: 13px; }
+  .tool-btn.on { background: #5C6E4B; color: #F6F2E8; }
+
+  .item-card { background: white; border: 1px solid #EFEAE2; border-radius: 8px; margin-bottom: 12px; cursor: pointer; overflow: hidden; display: flex; gap: 12px; padding: 12px; }
+  .thumb { width: 84px; height: 84px; border-radius: 8px; object-fit: cover; flex: none; background: #EFEAE2; }
+  .card-body { min-width: 0; flex: 1; }
+  .card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .card-top strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-desc { color: #666; font-size: 13.5px; margin: 4px 0 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+  .meta { font-size: 12px; color: #999; }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; flex: none; }
+  .badge.give { background: #EAF0E3; color: #4C5C3E; }
+  .badge.ask { background: #FFF3CD; color: #856404; }
+  .badge.matched { background: #ECEFF1; color: #607D8B; }
+  .empty { text-align: center; padding: 40px 0; color: #A39C8C; }
+  .section-title { margin: 18px 0 10px; font-size: 14px; font-weight: 700; color: #8B7E66; }
+
+  .form-card { background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px; }
+  .form-group { margin-bottom: 18px; }
+  .form-label { font-size: 13px; font-weight: 600; color: #5C5745; display: block; margin-bottom: 7px; }
+  .form-input, .form-textarea { width: 100%; padding: 11px 13px; border-radius: 8px; border: 1px solid #DCD3BC; background: #FDFBF5; font-size: 14px; font-family: inherit; }
+  .mode-row { background: #FDFBF5; padding: 12px; border-radius: 8px; border: 1px solid #DCD3BC; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .mode-row label { font-size: 14px; font-weight: bold; cursor: pointer; }
+  .preview { margin-top: 10px; width: 120px; height: 120px; border-radius: 8px; object-fit: cover; display: none; }
+  .hint { font-size: 12px; color: #A39C8C; margin-top: 6px; }
+
   .action-btn { width: 100%; padding: 13px; border-radius: 9px; background: #5C6E4B; color: #F6F2E8; font-size: 15px; font-weight: 700; }
   .cancel-btn { background: #FAF6EE; color: #B34A4A; border: 1px solid #D8CFB8; padding: 7px 14px; border-radius: 7px; font-size: 13px; }
   .select-btn { background: #5C6E4B; color: #F6F2E8; padding: 7px 14px; border-radius: 7px; font-size: 13px; }
+  .danger-btn { background: #B34A4A; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+  .wide { width: 100%; padding: 11px; font-size: 14px; }
+
   .admin-panel-box { padding: 16px; background: #F1ECDD; border-radius: 10px; border: 1px solid #ECE4D2; }
-  .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin-top: 14px; margin-bottom: 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
-  .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
-  .pwd-modal, .detail-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-  .pwd-box, .detail-box { background: white; padding: 20px; border-radius: 10px; width: 340px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(42,40,35,0.95); color: #FAF6EE; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 9999; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; min-width: 300px; border: 1px solid #8B7E66; }
+  .admin-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .admin-head h3 { margin: 0; color: #8B7E66; font-size: 17px; }
+  .admin-sub-title { font-size: 13px; font-weight: bold; color: #5C5745; margin: 16px 0 6px; border-left: 3px solid #8B7E66; padding-left: 6px; }
+  .admin-list-item { background: #FAF6EE; border: 1px solid #DCD3BC; padding: 10px; border-radius: 6px; font-size: 12.5px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .admin-list-item .grow { min-width: 0; flex: 1; word-break: break-word; }
+  .reset-btn { background: #B34A4A; color: white; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 13.5px; margin-top: 18px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .overlay.show { display: flex; }
+  .box { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+  .box-title { font-size: 14px; font-weight: bold; color: #5C5745; margin-bottom: 12px; }
+  .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+  .btn-row button { flex: 1; padding: 9px 0; }
+  .grey-btn { background: #EEE; color: #333; border-radius: 7px; font-size: 13px; }
+
+  .detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .detail-head h3 { margin: 0; font-size: 18px; word-break: break-word; }
+  .detail-img { width: 100%; max-width: 600px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; display: block; margin-bottom: 12px; background: #EFEAE2; }
+  .detail-desc { color: #555; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin: 0 0 12px; }
+  .detail-meta { font-size: 12px; color: #999; margin-bottom: 12px; }
+  .applicant-row { display: flex; align-items: center; justify-content: space-between; background: #FAF6EE; border: 1px solid #ECE4D2; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 14px; }
+  .match-box { background: #F1F6EC; border-radius: 8px; padding: 12px; font-size: 13.5px; color: #3F5A2E; line-height: 1.7; text-align: center; }
+  .muted { font-size: 13px; color: #999; text-align: center; padding: 8px 0; }
+
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(42,40,35,0.95); color: #FAF6EE; padding: 12px 22px; border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 3000; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center; max-width: 90%; border: 1px solid #8B7E66; }
+  .banner { background: #FFF3CD; color: #6b5200; border: 1px solid #E8D48A; border-radius: 8px; padding: 14px; font-size: 13.5px; line-height: 1.6; margin-bottom: 14px; display: none; white-space: pre-wrap; }
+  #blocked { position: fixed; inset: 0; background: #FAF6EE; z-index: 2000; display: none; align-items: center; justify-content: center; text-align: center; padding: 30px; color: #B34A4A; font-weight: bold; }
 </style>
 </head>
 <body>
 <div id="root">
   <div class="header-bar">
+    <button class="gear-btn" data-act="gate" aria-label="관리자 메뉴" title="관리자">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
     <h1 class="header-title">나눔의 자리</h1>
-    <div class="header-info">내 ID: <span id="display-my-id" style="font-weight:600;">선민1</span> · 시즌 <span id="display-season">1</span></div>
+    <div class="header-info">내 ID: <span id="my-id" style="font-weight:700;">...</span></div>
   </div>
+
   <div class="tab-container">
-    <button class="tab-btn active" id="tab-browse-btn">전체 둘러보기</button>
-    <button class="tab-btn" id="tab-share-btn">글쓰기 (나눔/요청)</button>
-    <button class="tab-btn" id="tab-mine-btn">나의 관리 목록</button>
+    <button class="tab-btn active" data-act="tab" data-tab="browse">전체 둘러보기</button>
+    <button class="tab-btn" data-act="tab" data-tab="share">글쓰기 (나눔/요청)</button>
+    <button class="tab-btn" data-act="tab" data-tab="mine">나의 관리 목록</button>
   </div>
+
   <div class="content-area">
+    <div id="banner" class="banner"></div>
+
     <div id="page-browse" class="app-page active">
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 12px; gap: 8px;">
-        <button id="admin-gate-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">⚙️ 관리센터</button>
-        <button id="toggle-done-btn" class="cancel-btn" style="background: #ECE4D2; color: #555; padding: 6px 12px; border: none;">👀 매칭완료 글도 보기</button>
+      <div class="tool-row">
+        <button id="bell-btn" class="tool-btn" data-act="bell">🔔 새 글 알림 받기</button>
+        <button id="done-btn" class="tool-btn" data-act="toggle-done">👀 매칭완료 글도 보기</button>
       </div>
-      <div id="browse-items-list"><div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 및 요청 글이 없습니다.</div></div>
+      <div id="browse-list"><div class="empty">불러오는 중...</div></div>
     </div>
+
     <div id="page-share" class="app-page">
-      <div style="background: white; border: 1px solid #EFEAE2; padding: 16px; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #8B7E66;">나눔 및 요청 글 등록</h3>
-        <div class="form-group" style="background: #FDFBF5; padding: 12px; border-radius: 8px; border: 1px solid #DCD3BC; display: flex; gap: 16px; justify-content: center;">
-          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #4C5C3E;"><input type="radio" name="form-mode" value="give" checked style="margin-right: 4px;" /> 🎁 나눠줄게요 (기부)</label>
-          <label style="font-size: 14px; font-weight: bold; cursor: pointer; color: #856404;"><input type="radio" name="form-mode" value="ask" style="margin-right: 4px;" /> 🙏 필요해요 (요청)</label>
+      <div class="form-card">
+        <h3 style="margin-top:0; color:#8B7E66;">나눔 및 요청 글 등록</h3>
+        <div class="form-group mode-row">
+          <label style="color:#4C5C3E;"><input type="radio" name="form-mode" value="give" checked /> 🎁 나눠줄게요</label>
+          <label style="color:#856404;"><input type="radio" name="form-mode" value="ask" /> 🙏 필요해요</label>
         </div>
-        <div class="form-group"><label class="form-label" id="label-form-title">기부할 물품 이름</label><input type="text" id="form-title" placeholder="예: 유아용 아동 카시트 나눠요" class="form-input" /></div>
-        <div class="form-group"><label class="form-label">참고 이미지 및 실물 사진</label><input type="file" id="form-image" accept="image/*" class="form-input" /><div id="image-preview-area" style="margin-top:10px; display:none;"><img id="form-preview-img" src="" style="width:80px; height:80px; border-radius:8px; object-fit:cover;" /></div></div>
-        <div class="form-group"><label class="form-label" id="label-form-desc">상세 설명 (물건 상태 등)</label><textarea id="form-desc" rows="3" placeholder="물건의 상태나 구체적인 수령 방법을 기입해 주세요." class="form-textarea"></textarea></div>
-        <button id="post-submit-btn" class="action-btn" style="margin-top: 10px;">등록하기</button>
+        <div class="form-group"><label class="form-label" id="lbl-title">나눔할 물품 이름</label><input type="text" id="f-title" maxlength="60" placeholder="예: 유아용 카시트" class="form-input" /></div>
+        <div class="form-group" id="grp-image">
+          <label class="form-label">물품 사진 (선택)</label>
+          <input type="file" id="f-image" accept="image/*" class="form-input" />
+          <img id="f-preview" class="preview" alt="미리보기" />
+          <div class="hint">어떤 사진이든 600 × 600 픽셀로 자동 조정됩니다.</div>
+        </div>
+        <div class="form-group"><label class="form-label" id="lbl-desc">설명 (물건 상태 등)</label><textarea id="f-desc" rows="4" maxlength="1000" placeholder="물건의 상태나 구체적인 수령 방법을 적어 주세요." class="form-textarea"></textarea></div>
+        <button id="submit-btn" class="action-btn" data-act="submit">등록하기</button>
       </div>
     </div>
-    <div id="page-mine" class="app-page"><h3 style="margin-top: 0; color: #8B7E66; margin-bottom: 16px;">내가 등록한 글 관리</h3><div id="mine-items-list"></div></div>
+
+    <div id="page-mine" class="app-page">
+      <h3 style="margin-top:0; color:#8B7E66;">내가 올린 글</h3>
+      <div id="mine-posts"></div>
+      <div class="section-title">내가 신청한 글</div>
+      <div id="mine-reqs"></div>
+    </div>
+
     <div id="page-admin" class="app-page">
       <div class="admin-panel-box">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h3 style="margin:0; color:#8B7E66;">⚙️ 통합 운영 관리센터</h3><button id="admin-exit-btn" class="cancel-btn" style="padding:4px 10px; font-size:12px;">나가기</button></div>
-        <div class="admin-sub-title">관리자 액세스 비밀번호 관리</div><button id="admin-change-pin-btn" class="select-btn" style="width:100%; padding:10px; font-size:13px; margin-bottom:16px;">🔒 마스터 PIN 번호 변경하기</button>
-        <div class="admin-sub-title">전체 등록 게시물 원격 관리 및 강제 파기</div><div id="admin-items-list"></div>
-        <div class="admin-sub-title">사용자 계정 조회 및 차단 통제센터</div><div id="admin-users-list"></div>
-        <button id="admin-reset-season-btn" style="background:#B34A4A; color:white; width:100%; padding:12px; border-radius:8px; font-weight:bold; font-size:13.5px; margin-top:8px;">⚠️ 현재 시즌 종료 및 데이터 전면 초기화</button>
+        <div class="admin-head"><h3>⚙️ 관리자 메뉴</h3><button class="cancel-btn" style="padding:4px 10px; font-size:12px;" data-act="exit">나가기</button></div>
+        <div class="admin-sub-title">비밀번호 재설정</div>
+        <button class="select-btn wide" data-act="change-pin">🔒 관리자 비밀번호 변경</button>
+        <div class="admin-sub-title">게시물 삭제</div>
+        <div id="admin-items"></div>
+        <div class="admin-sub-title">유저 퇴출</div>
+        <div id="admin-users"></div>
+        <div class="admin-sub-title">전체 초기화</div>
+        <button class="reset-btn" data-act="reset">⚠️ 모든 기록과 유저 초기화</button>
       </div>
     </div>
   </div>
 </div>
-<div id="admin-pwd-modal" class="pwd-modal" style="display: none;">
-  <div class="pwd-box">
-    <div style="font-size:14px; font-weight:bold; color:#5C5745; margin-bottom:12px;">🔒 관리자 비밀번호 입력</div>
-    <input type="password" id="modal-pwd-input" placeholder="비밀번호 입력" class="form-input" style="text-align:center; margin-bottom:14px;" />
-    <div style="display:flex; gap:8px;"><button id="modal-submit-btn" class="select-btn" style="flex:1; padding:8px 0;">확인</button><button id="modal-close-btn" class="cancel-btn" style="flex:1; padding:8px 0; background:#EEE; color:#333; border:none;">취소</button></div>
+
+<!-- 관리자 비밀번호 입력 -->
+<div id="gate-modal" class="overlay">
+  <div class="box" style="max-width:340px;">
+    <div class="box-title">🔒 관리자 비밀번호</div>
+    <input type="password" id="gate-input" placeholder="비밀번호 입력" class="form-input" style="text-align:center;" autocomplete="off" />
+    <div class="btn-row"><button class="select-btn" data-act="gate-ok">확인</button><button class="grey-btn" data-act="gate-cancel">취소</button></div>
   </div>
 </div>
 
-<div id="detail-modal" class="detail-modal" style="display: none;">
-  <div class="detail-box">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 id="detail-title" style="margin:0; font-size:18px;"></h3>
-      <button onclick="closeDetailModal()" class="cancel-btn" style="padding:4px 8px; font-size:12px;">닫기</button>
-    </div>
-    <div id="detail-badge-area" style="margin-bottom:8px;"></div>
-    <p id="detail-desc" style="color:#666; font-size:14px; line-height:1.5; white-space:pre-wrap; margin-bottom:12px; max-height:160px; overflow-y:auto;"></p>
-    <div id="detail-image-area" style="margin-bottom:12px;"></div>
-    <div style="font-size:12px; color:#999; margin-bottom:12px;">작성 성도: <span id="detail-giver"></span></div>
-    <div id="detail-action-area"></div>
+<!-- 비밀번호 변경 -->
+<div id="pin-modal" class="overlay">
+  <div class="box" style="max-width:340px;">
+    <div class="box-title">🔒 새 비밀번호 설정 (4자 이상)</div>
+    <input type="password" id="pin-new" placeholder="새 비밀번호" class="form-input" style="margin-bottom:10px;" autocomplete="off" />
+    <input type="password" id="pin-new2" placeholder="새 비밀번호 확인" class="form-input" autocomplete="off" />
+    <div class="btn-row"><button class="select-btn" data-act="pin-save">저장</button><button class="grey-btn" data-act="pin-cancel">취소</button></div>
   </div>
 </div>
 
-<div id="toast-message" class="toast"></div>
+<!-- 상세 보기 -->
+<div id="detail-modal" class="overlay" data-act="bg-detail">
+  <div class="box">
+    <div class="detail-head"><h3 id="d-title"></h3><button class="cancel-btn" style="padding:4px 10px; font-size:12px; flex:none;" data-act="close-detail">닫기</button></div>
+    <div id="d-badge" style="margin-bottom:10px;"></div>
+    <div id="d-image"></div>
+    <p id="d-desc" class="detail-desc"></p>
+    <div class="detail-meta">작성: <span id="d-giver"></span></div>
+    <div id="d-actions"></div>
+  </div>
+</div>
 
+<div id="blocked"><div>🚫 이용이 제한된 계정입니다.<br /><span style="font-size:13px; font-weight:400;">문의는 교회 행정실로 해 주세요.</span></div></div>
+<div id="toast" class="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-  // 🛠️ [기존 구글 파이어베이스 캐시 완전 강제 증발] 캐시 락 무력화를 위한 고유 세션 명칭 부여
-  var TARGET_COLLECTION = "church_local_storage_hub_v100";
+(function () {
+  'use strict';
 
-  var fbApi = {
-    watchItems: function(cb) {
-      fallbackWatch(cb);
-      return function(){};
-    },
-    addItem: function(data) { data.createdAt = Date.now(); return fallbackAdd(data); },
-    updateItem: function(id, data) { return fallbackUpdate(id, data); },
-    deleteItem: function(id) { return fallbackDelete(id); },
-    uploadImage: function(file, myId) { 
-      return new Promise(function(resolve, reject) { 
-        var reader = new FileReader(); 
-        reader.onloadend = function() { resolve({ url: reader.result, imagePath: "embedded_base64" }); }; 
-        reader.onerror = function(e) { reject(e); }; 
-        reader.readAsDataURL(file); 
-      }); 
-    },
-    requestItem: function(id, myId) { return fbApi.updateItem(id, { requesters: getRequestersAdded(id, myId) }); },
-    cancelRequest: function(id, myId) { return fbApi.updateItem(id, { requesters: getRequestersRemoved(id, myId) }); },
-    getSeason: function() { 
-      try { var s = parseInt(window.localStorage.getItem("meta_season")) || 1; return Promise.resolve(s); } catch(e) { return Promise.resolve(1); }
-    },
-    startNewSeason: function(curr) {
-      var next = curr + 1;
-      try {
-        window.localStorage.setItem("meta_season", next);
-        window.localStorage.setItem(TARGET_COLLECTION, "[]");
-        window.localStorage.setItem("church_id_counter", "1");
-        
-        // 데이터 포맷 시 발급되었던 식별자 고정 데이터도 완전히 소독 마감
-        var uu = [];
-        for (var i = 0; i < window.localStorage.length; i++) {
-          var k = window.localStorage.key(i);
-          if (k && k.indexOf("my-fixed-id-") === 0) uu.push(k);
-        }
-        uu.forEach(function(key) { window.localStorage.removeItem(key); });
-      } catch(e){}
-      if(localWatchCallback) localWatchCallback([]);
-      return Promise.resolve(next);
-    },
-    getAdminPin: function() { 
-      try { var p = window.localStorage.getItem("meta_pin") || "1234"; return Promise.resolve(p); } catch(e) { return Promise.resolve("1234"); }
-    },
-    setAdminPin: function(pin) { 
-      try { window.localStorage.setItem("meta_pin", pin); } catch(e){} return Promise.resolve(); 
-    },
-    getBlockedUsers: function() { 
-      try { var l = JSON.parse(window.localStorage.getItem("meta_blocked")) || []; return Promise.resolve(l); } catch(e) { return Promise.resolve([]); }
-    },
-    blockUser: function(uId) { 
-      try { 
-        var l = JSON.parse(window.localStorage.getItem("meta_blocked")) || []; 
-        if(l.indexOf(uId) === -1) l.push(uId); 
-        window.localStorage.setItem("meta_blocked", JSON.stringify(l)); 
-      } catch(e){} return Promise.resolve(); 
-    },
-    unblockUser: function(uId) { 
-      try { 
-        var l = JSON.parse(window.localStorage.getItem("meta_blocked")) || []; 
-        l = l.filter(function(r){ return r !== uId; }); 
-        window.localStorage.setItem("meta_blocked", JSON.stringify(l)); 
-      } catch(e){} return Promise.resolve(); 
-    }
+  // ============================================================
+  // ★ 1) 여기에 Firebase 콘솔의 "웹 앱 설정값"을 붙여넣으세요.
+  //    (프로젝트 설정 → 일반 → 내 앱 → SDK 설정 및 구성)
+  // ============================================================
+  var FIREBASE_CONFIG = {
+    apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
+    authDomain: "power-market-f9573.firebaseapp.com",
+    projectId: "power-market-f9573",
+    storageBucket: "Ypower-market-f9573.firebasestorage.app",
+    messagingSenderId: "1005808106144",
+    appId: "1:1005808106144:web:faef2e17c612833aec67c5"
   };
-</script>
-  var localWatchCallback = null;
-  function fallbackWatch(cb) { localWatchCallback = cb; triggerLocalEmit(); }
-  function triggerLocalEmit() {
-    if (localWatchCallback) {
-      var list = [];
-      try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){}
-      localWatchCallback(list);
-    }
+
+  var DEFAULT_PIN = '1234';          // 처음 한 번만 쓰는 기본 관리자 비밀번호 (진입 후 꼭 변경하세요)
+  var WEEK = 7 * 24 * 60 * 60 * 1000; // 매칭 후 자동 삭제까지의 시간
+  var IMG_SIZE = 600;                 // 업로드 이미지 고정 크기(px)
+
+  var db = null, FV = null;
+  var me = { id: null, epoch: 1, blocked: false };
+  var items = [], users = [];
+  var tab = 'browse', showDone = false, isAdmin = false, activeId = null;
+  var pendingImage = '', firstSnap = true, startedAt = Date.now(), lastCleanup = 0;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { window.localStorage.removeItem(k); } catch (e) {} }
+  function safeImg(s) { return typeof s === 'string' && s.indexOf('data:image/') === 0 ? s : ''; }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.style.display = 'none'; }, 3200);
   }
-  function fallbackAdd(data) { return new Promise(function(res) { data.id = "local_" + Date.now(); var list = []; try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){} list.unshift(data); window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(list)); triggerLocalEmit(); res(data.id); }); }
-  function fallbackUpdate(id, data) { return new Promise(function(res) { var list = []; try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){} for(var i=0; i<list.length; i++) { if(list[i].id === id) { list[i] = Object.assign(list[i], data); break; } } window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(list)); triggerLocalEmit(); res(); }); }
-  function fallbackDelete(id) { return new Promise(function(res) { var list = []; try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){} list = list.filter(function(i){ return i.id !== id; }); window.localStorage.setItem(TARGET_COLLECTION, JSON.stringify(list)); triggerLocalEmit(); res(); }); }
-  function getRequestersAdded(id, myId) { var list = []; try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){} var item = list.find(function(i){ return i.id === id; }); var reqs = item ? (item.requesters || []) : []; if(reqs.indexOf(myId) === -1) reqs.push(myId); return reqs; }
-  function getRequestersRemoved(id, myId) { var list = []; try { list = JSON.parse(window.localStorage.getItem(TARGET_COLLECTION)) || []; } catch(e){} var item = list.find(function(i){ return i.id === id; }); var reqs = item ? (item.requesters || []) : []; return reqs.filter(function(r){ return r !== myId; }); }
-
-  var myId = null, season = 1, currentTab = 'browse', allItems = [], showDone = false, isAdminAuthed = false, blockedUsers = [];
-
-  // 🛠️ [고정 순차 일련번호 영구 정착 배정] 브라우저 강제 락 요소를 원천 파쇄한 순수 하이퍼 기동축
-  function initAppStatic() {
-    var browserFingerprint = (navigator.userAgent.length % 7) + (navigator.hardwareConcurrency || 4);
-    var storageKey = "my-fixed-id-v100-" + browserFingerprint;
-    var id = null;
-    try { id = window.localStorage.getItem(storageKey); } catch (e) {}
-    
-    if (!id || id === "선민-대기중" || id.indexOf("선민") !== 0) {
-      var currentCounter = 1;
-      try { currentCounter = parseInt(window.localStorage.getItem("church_id_counter")) || 1; } catch(e){}
-      id = "선민" + currentCounter;
-      try {
-        window.localStorage.setItem(storageKey, id);
-        window.localStorage.setItem("church_id_counter", currentCounter + 1);
-      } catch(e){}
-    }
-    
-    myId = id;
-    document.getElementById('display-my-id').innerText = myId;
-    
-    switchPageTab('browse'); 
-    connectServerDatabase();
+  function banner(msg) { var b = $('banner'); b.textContent = msg; b.style.display = msg ? 'block' : 'none'; }
+  function errMsg(e) {
+    var m = (e && (e.message || e.code)) || '';
+    if (m === 'closed') return '이미 매칭이 끝난 글이에요.';
+    if (m === 'gone') return '삭제된 글이에요.';
+    if (m === 'mine') return '내가 쓴 글에는 신청할 수 없어요.';
+    if (m === 'noapplicant') return '신청 목록에 없는 분이에요.';
+    if (String(m).indexOf('permission') !== -1) return '권한 오류예요. Firestore 규칙을 확인해 주세요.';
+    return '처리 중 오류가 났어요. 잠시 후 다시 시도해 주세요.';
   }
 
-  function connectServerDatabase() {
-    fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; if (blockedUsers.indexOf(myId) !== -1) { document.getElementById('root').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #B34A4A; font-weight: bold;">🚫 이용 제한 계정입니다.</div>'; } }).catch(function(){});
-    fbApi.getSeason().then(function(s) { season = s; document.getElementById('display-season').innerText = season; }).catch(function(){});
-    
-    fbApi.watchItems(function(list) {
-      allItems = list; refreshUI(); updateDetailModalLive();
-    });
-  }
-
-  function switchPageTab(name) {
-    currentTab = name;
-    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
-    var btn = document.getElementById('tab-' + name + '-btn'); if (btn) btn.classList.add('active');
-    document.querySelectorAll('.app-page').forEach(function(p) { p.classList.remove('active'); });
-    var pEl = document.getElementById('page-' + name); if (pEl) pEl.classList.add('active');
-    if (name === 'admin' && !isAdminAuthed) { pEl.classList.remove('active'); document.getElementById('modal-pwd-input').value = ""; document.getElementById('admin-pwd-modal').style.display = 'flex'; }
-    else { document.getElementById('admin-pwd-modal').style.display = 'none'; }
-    refreshUI();
-  }
-  function refreshUI() {
-    if (currentTab === 'browse') {
-      var box = document.getElementById('browse-items-list'); if (!box) return;
-      var filtered = showDone ? allItems : allItems.filter(function(i) { return i.status !== 'matched'; });
-      document.getElementById('toggle-done-btn').innerText = showDone ? "✓ 매칭완료 글 숨기기" : "👀 매칭완료 글도 보기";
-      if (filtered.length === 0) { box.innerHTML = '<div style="text-align: center; padding: 40px 0; color: #A39C8C;">📦 등록된 나눔 및 요청 글이 없습니다.</div>'; return; }
-      var html = "";
-      filtered.forEach(function(it) {
-        var len = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
-        html += '<div class="item-card" onclick="openDetailModal(\'' + it.id + '\')"><div class="card-top"><span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span><strong>' + it.title + '</strong></div>';
-        html += '<p style="color:#666; font-size:14px; margin:8px 0; white-space:pre-wrap;">' + (it.desc || "상세 설명이 없습니다.") + '</p>';
-        if (it.image) html += '<div style="margin:8px 0;"><img src="' + it.image + '" style="width:100%; max-height:240px; border-radius:8px; object-fit:cover;" /></div>';
-        html += '<div style="font-size:12px; color:#999; margin-bottom:4px;">작성자: ' + it.giverId + ' (' + len + '명 신청중)</div></div>';
-      }); box.innerHTML = html;
-    }
-    else if (currentTab === 'mine') {
-      var box = document.getElementById('mine-items-list'); if (!box) return;
-      var myItems = allItems.filter(function(i) { return i.giverId === myId; });
-      if (myItems.length === 0) { box.innerHTML = '<div style="text-align: center; padding: 30px 0; color: #999;">아직 등록한 나눔이나 요청 글이 없습니다.</div>'; return; }
-      var html = "";
-      myItems.forEach(function(it) {
-        var len = (it.requesters && it.requesters.length) || 0, mode = it.category === "ask" ? "ask" : "give";
-        html += '<div class="item-card" onclick="openDetailModal(\'' + it.id + '\')" style="border-left:4px solid ' + (mode === 'give' ? '#8B7E66' : '#BA9B65') + ';"><div style="font-size:11px; font-weight:bold; color:' + (mode === 'give' ? '#4C5C3E' : '#856404') + '; margin-bottom:2px;">' + (mode === 'give' ? '[나눠요기부]' : '[필요해요요청]') + '</div><strong style="font-size:16px; display:block; margin-bottom:4px;">' + it.title + '</strong><div style="font-size:13px; color:#666;">신청 성도 수: ' + len + '명</div></div>';
-      }); box.innerHTML = html;
-    } else if (currentTab === 'admin' && isAdminAuthed) {
-      var ibox = document.getElementById('admin-items-list'), ubox = document.getElementById('admin-users-list');
-      if (ibox) { if (allItems.length === 0) ibox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">등록글 없음.</div>'; else { var html = ""; allItems.forEach(function(i) { html += '<div class="admin-list-item"><div style="min-width:0; flex:1; padding-right:8px;"><strong>[' + (i.category === "ask" ? "요청" : "나눔") + '] ' + i.title + '</strong><br/><span style="font-size:11px; color:#888;">작성자: ' + i.giverId + '</span></div><button class="act-admin-del" data-id="' + i.id + '" style="background:#B34A4A; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">강제삭제</button></div>'; }); ibox.innerHTML = html; } }
-      if (ubox) { var uu = []; allItems.forEach(function(i) { if (uu.indexOf(i.giverId) === -1) uu.push(i.giverId); if (i.requesters) i.requesters.forEach(function(r) { if (uu.indexOf(r) === -1) uu.push(r); }); }); if (uu.length === 0) ubox.innerHTML = '<div style="font-size:12px; color:#999; text-align:center; padding:10px;">유저 없음.</div>'; else { var html = ""; uu.forEach(function(u) { var b = blockedUsers.indexOf(u) !== -1; html += '<div class="admin-list-item"><span>👤 <strong>' + u + '</strong>' + (b ? ' <span style="color:#B34A4A; font-weight:bold;">[차단됨]</span>' : '') + '</span><button class="act-admin-block" data-userid="' + u + '" style="background:' + (b ? '#4C5C3E' : '#B34A4A') + '; color:white; font-size:11px; padding:4px 8px; border-radius:4px;">' + (b ? '차단해제' : '유저차단') + '</button></div>'; }); ubox.innerHTML = html; } }
-    }
-  }
-
-  var activeDetailId = null;
-  function openDetailModal(id) { activeDetailId = id; document.getElementById('detail-modal').style.display = 'flex'; updateDetailModalLive(); }
-  function closeDetailModal() { document.getElementById('detail-modal').style.display = 'none'; activeDetailId = null; }
-  function updateDetailModalLive() {
-    if (!activeDetailId) return;
-    var it = allItems.find(function(i) { return i.id === activeDetailId; });
-    if (!it) { closeDetailModal(); return; }
-    
-    document.getElementById('detail-title').innerText = it.title;
-    document.getElementById('detail-desc').innerText = it.desc || "상세 설명이 없습니다.";
-    document.getElementById('detail-giver').innerText = it.giverId;
-    
-    var mode = it.category === "ask" ? "ask" : "give";
-    var badgeHtml = '<span class="badge ' + (it.status === 'matched' ? 'matched' : mode) + '">' + (it.status === 'matched' ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span>';
-    document.getElementById('detail-badge-area').innerHTML = badgeHtml;
-    
-    var imgArea = document.getElementById('detail-image-area');
-    if (it.image) { imgArea.innerHTML = '<img src="' + it.image + '" style="width:100%; max-height:200px; border-radius:8px; object-fit:cover;" />'; }
-    else { imgArea.innerHTML = ""; }
-    
-    var actArea = document.getElementById('detail-action-area');
-    var isMine = it.giverId === myId;
-    var requested = it.requesters && it.requesters.indexOf(myId) !== -1;
-    var len = (it.requesters && it.requesters.length) || 0;
-    
-    var html = "";
-    if (it.status === 'open') {
-      if (isMine) {
-        html += '<button class="select-btn act-match-prompt" data-id="' + it.id + '" style="width:100%; margin-bottom:8px;">상대 성도 지정 매칭</button>';
-        html += '<button class="cancel-btn act-del" data-id="' + it.id + '" style="width:100%; background:#EF9A9A; color:#B71C1C; border:none;">글 취소하기</button>';
-      } else if (requested) {
-        html += '<button class="cancel-btn act-cancel-req" data-id="' + it.id + '" style="width:100%;">신청 취소하기</button>';
-      } else {
-        html += '<button class="select-btn act-req" data-id="' + it.id + '" style="width:100%; background:' + (mode === 'give' ? '#5C6E4B' : '#856404') + '">' + (mode === 'give' ? '🙋 저 받을래요' : '🎁 내가 나눠줄게요') + ' (' + len + '명 신청중)</button>';
-      }
-    } else {
-      html += '<div style="background:#F5F5F5; padding:10px; border-radius:6px; font-size:13px; color:#43A047; font-weight:bold; text-align:center;">🎉 매칭 완료! 상대 성도: ' + (it.selectedReceiverId || "완료") + '</div>';
-    }
-    actArea.innerHTML = html;
-  }
-
-  document.addEventListener('click', function(e) {
-    var t = e.target;
-    if (t.classList.contains('act-req')) { fbApi.requestItem(t.getAttribute('data-id'), myId).then(function() { showToast("신청이 반영되었습니다."); }); }
-    else if (t.classList.contains('act-cancel-req')) { fbApi.cancelRequest(t.getAttribute('data-id'), myId).then(function() { showToast("신청을 취소했습니다."); }); }
-    else if (t.classList.contains('act-match-prompt')) {
-      var id = t.getAttribute('data-id'), item = allItems.find(function(i) { return i.id === id; }), reqs = item ? (item.requesters || []) : [];
-      if (reqs.length === 0) { alert("아직 신청자가 없습니다."); return; }
-      var txt = "매칭할 상대 성도 ID를 입력하세요:\n\n[명단]\n"; reqs.forEach(function(r) { txt += "- " + r + "\n"; });
-      var sel = prompt(txt); if (!sel) return; if (reqs.indexOf(sel.trim()) === -1) { alert("명단에 없는 성도입니다."); return; }
-      fbApi.updateItem(id, { selectedReceiverId: sel.trim(), status: "matched" }).then(function() { showToast("매칭 성공!"); });
-    }
-    else if (t.classList.contains('act-del')) { if (confirm("이 글을 영구 삭제하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id')).then(function() { showToast("삭제 완료."); closeDetailModal(); }); }
-    else if (t.classList.contains('act-admin-del')) { if (confirm("강제 파기하시겠습니까?")) fbApi.deleteItem(t.getAttribute('data-id')).then(function() { showToast("파기 완료."); }); }
-    else if (t.classList.contains('act-admin-block')) {
-      var u = t.getAttribute('data-userid');
-      if (blockedUsers.indexOf(u) !== -1) { fbApi.unblockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
-      else { if (confirm("해당 유저를 접속 차단하시겠습니까?")) fbApi.blockUser(u).then(function() { fbApi.getBlockedUsers().then(function(l) { blockedUsers = l; refreshUI(); }); }); }
-    }
-  });
-  document.getElementById('tab-browse-btn').addEventListener('click', function() { switchPageTab('browse'); });
-  document.getElementById('tab-share-btn').addEventListener('click', function() { switchPageTab('share'); });
-  document.getElementById('tab-mine-btn').addEventListener('click', function() { switchPageTab('mine'); });
-  document.getElementById('admin-gate-btn').addEventListener('click', function() { switchPageTab('admin'); });
-  document.getElementById('toggle-done-btn').addEventListener('click', function() { showDone = !showDone; refreshUI(); });
-  
-  // 🛠️ [관리센터 퇴장 시 즉시 재잠금 유닛 완치]
-  document.getElementById('admin-exit-btn').addEventListener('click', function() {
-    isAdminAuthed = false;
-    switchPageTab('browse');
-    showToast("관리자 모드가 해제되고 안전하게 재잠금되었습니다.");
-  });
-  
-  document.getElementById('admin-change-pin-btn').addEventListener('click', function() {
-    var p = prompt("새 PIN 코드 기입:");
-    if (p && p.trim()) fbApi.setAdminPin(p.trim()).then(function() { showToast("변경 완료."); });
-  });
-
-  // 🛠️ [시즌 마스터 전면 포맷팅 초기화 완치]
-  document.getElementById('admin-reset-season-btn').addEventListener('click', function() {
-    if (confirm("전체 데이터를 포맷팅 초기화할까요?\n(등록글, 순차 발급 기록이 모두 영구 소독 삭제됩니다.)")) {
-      fbApi.startNewSeason(season).then(function(n) { 
-        season = n; 
-        document.getElementById('display-season').innerText = season; 
-        switchPageTab('browse'); 
-        showToast("시즌 포맷팅 초기화가 완수되었습니다.");
+  // ---------- 관리자 비밀번호 해시 ----------
+  function hashPin(p) {
+    var text = 'sm-salt:' + p;
+    if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+      return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buf) {
+        return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
       });
     }
-  });
-
-  document.getElementById('modal-submit-btn').addEventListener('click', function() {
-    var pin = document.getElementById('modal-pwd-input').value;
-    fbApi.getAdminPin().then(function(r) {
-      if (pin === r || pin === "1234") {
-        isAdminAuthed = true;
-        document.getElementById('admin-pwd-modal').style.display = 'none';
-        document.getElementById('page-admin').classList.add('active');
-        refreshUI();
-      } else { alert("암호 오류."); }
+    var h = 5381; for (var i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+    return Promise.resolve('f' + h);
+  }
+  function getPinHash() {
+    return db.collection('meta').doc('admin').get().then(function (s) {
+      return (s.exists && s.data().pinHash) ? s.data().pinHash : hashPin(DEFAULT_PIN);
     });
-  });
-
-  document.getElementById('modal-close-btn').addEventListener('click', function() {
-    document.getElementById('admin-pwd-modal').style.display = 'none';
-    switchPageTab('browse');
-  });
-
-  document.getElementById('form-image').addEventListener('change', function() {
-    if (this.files && this.files[0]) {
-      document.getElementById('image-preview-area').style.display = 'block';
-      document.getElementById('form-preview-img').src = URL.createObjectURL(this.files[0]);
-    }
-  });
-  
-  document.querySelectorAll('input[name="form-mode"]').forEach(function(rd) {
-    rd.addEventListener('change', function() {
-      var val = this.value;
-      document.getElementById('label-form-title').innerText = val === 'give' ? "기부할 물품 이름" : "구하는 물품 이름";
-      document.getElementById('form-title').placeholder = val === 'give' ? "예: 유아용 아동 카시트 나눠요" : "예: 신생아용 유모차 급히 구합니다";
-      document.getElementById('label-form-desc').innerText = val === 'give' ? "상세 설명 (물건 상태 등)" : "상세 설명 (필요한 이유, 사이즈 등)";
-      document.getElementById('form-desc').placeholder = val === 'give' ? "물건의 상태나 구체적인 수령 방법을 기입해 주세요." : "구체적인 규격이나 수령 희망 장소를 기입해 주세요.";
-    });
-  });
-
-  function resizeAndCompressImage(file, callback) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var img = new Image();
-      img.onload = function() {
-        var canvas = document.createElement('canvas');
-        var max_size = 600;
-        var width = img.width;
-        var height = img.height;
-        if (width > height) { if (width > max_size) { height *= max_size / width; width = max_size; } }
-        else { if (height > max_size) { width *= max_size / height; height = max_size; } }
-        canvas.width = width;
-        canvas.height = height;
-        var ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(function(blob) { callback(blob); }, 'image/jpeg', 0.8);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
   }
 
-  document.getElementById('post-submit-btn').addEventListener('click', function() {
-    var tVal = document.getElementById('form-title').value, dVal = document.getElementById('form-desc').value, modeVal = document.querySelector('input[name="form-mode"]:checked').value, fIn = document.getElementById('form-image'), file = fIn && fIn.files && fIn.files[0];
-    if (!tVal.trim()) { alert("내용을 기입하세요."); return; }
-    var btn = this; btn.disabled = true; btn.innerText = "🚀 등록 중...";
-    
-    var proceedAdd = function(imgUrl, imgPath) {
-      fbApi.addItem({ title: tVal.trim(), desc: dVal.trim(), category: modeVal, giverId: myId, requesters: [], selectedReceiverId: null, status: "open", image: imgUrl || "", imagePath: imgPath || "" }).then(function() {
-        showToast(modeVal === 'give' ? "🎁 [새 나눔 등록 완료!]" : "🙏 [새 요청 등록 완료!]");
-        document.getElementById('form-title').value = "";
-        document.getElementById('form-desc').value = "";
-        document.getElementById('form-image').value = "";
-        document.getElementById('image-preview-area').style.display = 'none';
-        btn.disabled = false; btn.innerText = "등록하기";
-        switchPageTab('browse');
-      });
-    };
+  // ---------- 시작 ----------
+  function start() {
+    if (typeof firebase === 'undefined') { banner('Firebase 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 새로고침해 주세요.'); $('browse-list').innerHTML = ''; return; }
+    if (!FIREBASE_CONFIG.projectId || /^YOUR_/.test(FIREBASE_CONFIG.projectId)) {
+      banner('⚠️ Firebase 설정값이 아직 입력되지 않았어요.\nindex.html 안의 FIREBASE_CONFIG 부분에 Firebase 콘솔의 설정값을 붙여넣어 주세요.');
+      $('browse-list').innerHTML = ''; return;
+    }
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      db = firebase.firestore(); FV = firebase.firestore.FieldValue;
+    } catch (e) { banner('Firebase 초기화 실패: ' + (e.message || e)); return; }
+    ensureIdentity().then(watchAll).catch(onWatchError);
+    setInterval(cleanupExpired, 10 * 60 * 1000);
+  }
 
-    if (file) {
-      resizeAndCompressImage(file, function(compressedBlob) {
-        fbApi.uploadImage(compressedBlob, myId).then(function(res) { 
-          proceedAdd(res.url, res.imagePath); 
-        }).catch(function() { 
-          proceedAdd(); 
+  // ---------- 아이디 부여: 접속 순서대로 선민1, 선민2 ... (기기에 영구 저장) ----------
+  function ensureIdentity() {
+    var counterRef = db.collection('meta').doc('counter');
+    return counterRef.get().then(function (snap) {
+      var epoch = snap.exists ? (snap.data().epoch || 1) : 1;
+      me.epoch = epoch;
+      var saved = lsGet('sm_id'), savedEpoch = lsGet('sm_epoch');
+      if (saved && String(savedEpoch) === String(epoch)) {
+        me.id = saved; showMyId();
+        return db.collection('users').doc(saved).get().then(function (u) {
+          if (!u.exists) return db.collection('users').doc(saved).set({ num: parseInt(saved.replace(/\D/g, ''), 10) || 0, epoch: epoch, createdAt: Date.now(), blocked: false, notify: lsGet('sm_notify') === '1' });
         });
+      }
+      return db.runTransaction(function (tx) {
+        return tx.get(counterRef).then(function (s) {
+          var d = s.exists ? s.data() : { n: 0, epoch: 1 };
+          var n = (d.n || 0) + 1, ep = d.epoch || 1;
+          var id = '선민' + n;
+          tx.set(counterRef, { n: n, epoch: ep });
+          tx.set(db.collection('users').doc(id), { num: n, epoch: ep, createdAt: Date.now(), blocked: false, notify: false });
+          return { id: id, epoch: ep };
+        });
+      }).then(function (r) {
+        me.id = r.id; me.epoch = r.epoch;
+        lsSet('sm_id', r.id); lsSet('sm_epoch', String(r.epoch)); lsDel('sm_notify');
+        showMyId(); updateBell();
       });
-    } else { proceedAdd(); }
-  });
+    });
+  }
+  function showMyId() { $('my-id').textContent = me.id; updateBell(); }
 
-  function showToast(msg) {
-    var e = document.getElementById('toast-message'); if (!e) return;
-    e.innerText = msg; e.style.display = 'block';
-    setTimeout(function() { e.style.display = 'none'; }, 3000);
+  // ---------- 실시간 구독 ----------
+  function onWatchError(e) {
+    banner('데이터를 불러오지 못했어요. (' + ((e && (e.code || e.message)) || '알 수 없는 오류') + ')\nFirestore가 생성되어 있는지, 규칙(Rules)이 읽기/쓰기를 허용하는지 확인해 주세요. 테스트 모드는 30일 뒤 자동으로 막힙니다.');
+  }
+  function watchAll() {
+    db.collection('meta').doc('counter').onSnapshot(function (s) {
+      if (!s.exists) return;
+      var ep = s.data().epoch || 1;
+      if (String(ep) !== String(me.epoch)) { lsDel('sm_id'); lsDel('sm_epoch'); lsDel('sm_notify'); window.location.reload(); }
+    }, onWatchError);
+
+    db.collection('users').onSnapshot(function (snap) {
+      users = snap.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; });
+      var mine = users.filter(function (u) { return u.id === me.id; })[0];
+      me.blocked = !!(mine && mine.blocked);
+      $('blocked').style.display = me.blocked ? 'flex' : 'none';
+      if (tab === 'admin') renderAdmin();
+    }, onWatchError);
+
+    db.collection('items').onSnapshot(function (snap) {
+      if (!firstSnap) {
+        snap.docChanges().forEach(function (ch) {
+          if (ch.type === 'added') { var x = ch.doc.data(); x.id = ch.doc.id; notifyNew(x); }
+        });
+      }
+      firstSnap = false;
+      items = snap.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; })
+        .sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      cleanupExpired();
+      render();
+    }, onWatchError);
   }
 
-  initAppStatic();
-</script>
-</body>
-</html>
+  // ---------- 매칭 후 일주일 지나면 자동 삭제 ----------
+  function expired(it) { return it.status === 'matched' && it.matchedAt && (Date.now() - it.matchedAt > WEEK); }
+  function cleanupExpired() {
+    var now = Date.now(); if (!db || now - lastCleanup < 60000) return; lastCleanup = now;
+    items.filter(expired).forEach(function (it) { db.collection('items').doc(it.id).delete().catch(function () {}); });
+  }
+  function visibleItems() { return items.filter(function (it) { return !expired(it); }); }
 
+  // ---------- 새 글 알림 ----------
+  function isNotifyOn() { return lsGet('sm_notify') === '1'; }
+  function updateBell() { var b = $('bell-btn'); if (!b) return; var on = isNotifyOn(); b.textContent = on ? '🔔 새 글 알림 켜짐' : '🔕 새 글 알림 받기'; b.className = 'tool-btn' + (on ? ' on' : ''); }
+  function setUserNotify(v) { if (db && me.id) return db.collection('users').doc(me.id).update({ notify: v }).catch(function () {}); return Promise.resolve(); }
+  function toggleNotify() {
+    if (isNotifyOn()) { lsSet('sm_notify', '0'); setUserNotify(false); updateBell(); toast('새 글 알림을 껐어요.'); return; }
+    var ask = (window.Notification && Notification.permission === 'default') ? Notification.requestPermission() : Promise.resolve(window.Notification ? Notification.permission : 'denied');
+    Promise.resolve(ask).then(function (p) {
+      lsSet('sm_notify', '1'); setUserNotify(true); updateBell();
+      toast(p === 'granted' ? '새 글이 올라오면 알려드릴게요.' : '화면 안내 알림으로 알려드릴게요. (브라우저 알림은 허용되지 않았어요)');
+    });
+  }
+  function notifyNew(it) {
+    if (!isNotifyOn() || it.giverId === me.id || (it.createdAt && it.createdAt < startedAt)) return;
+    var msg = (it.category === 'ask' ? '🙏 새 요청: ' : '🎁 새 나눔: ') + it.title;
+    toast(msg);
+    try { if (window.Notification && Notification.permission === 'granted') new Notification('나눔의 자리', { body: msg }); } catch (e) {}
+  }
 
-  initAppStatic();
+  // ---------- 화면 ----------
+  function switchTab(name) {
+    if (name === 'admin' && !isAdmin) { openGate(); return; }
+    if (name !== 'admin') isAdmin = false;
+    tab = name;
+    Array.prototype.forEach.call(document.querySelectorAll('.tab-btn'), function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === name); });
+    Array.prototype.forEach.call(document.querySelectorAll('.app-page'), function (p) { p.classList.remove('active'); });
+    $('page-' + name).classList.add('active');
+    render();
+  }
+  function render() {
+    if (tab === 'browse') renderBrowse(); else if (tab === 'mine') renderMine(); else if (tab === 'admin') renderAdmin();
+    if (activeId) renderDetail();
+  }
+  function cardHtml(it) {
+    var mode = it.category === 'ask' ? 'ask' : 'give', matched = it.status === 'matched', n = (it.requesters || []).length;
+    var label = matched ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요');
+    var sub = mode === 'give' ? (matched ? '' : ' · ' + n + '명 신청중') : (matched ? '' : ' · 나눠주실 분을 찾아요');
+    var img = safeImg(it.image);
+    return '<div class="item-card" data-act="open" data-id="' + esc(it.id) + '">' +
+      (img ? '<img class="thumb" src="' + esc(img) + '" alt="" />' : '') +
+      '<div class="card-body"><div class="card-top"><span class="badge ' + (matched ? 'matched' : mode) + '">' + label + '</span><strong>' + esc(it.title) + '</strong></div>' +
+      '<p class="card-desc">' + esc(it.desc || '상세 설명이 없습니다.') + '</p>' +
+      '<div class="meta">' + esc(it.giverId) + sub + '</div></div></div>';
+  }
+  function renderBrowse() {
+    $('done-btn').textContent = showDone ? '✓ 매칭완료 글 숨기기' : '👀 매칭완료 글도 보기';
+    var list = visibleItems().filter(function (it) { return showDone || it.status !== 'matched'; });
+    $('browse-list').innerHTML = list.length ? list.map(cardHtml).join('') : '<div class="empty">📦 등록된 나눔 및 요청 글이 없습니다.</div>';
+  }
+  function renderMine() {
+    var vis = visibleItems();
+    var mine = vis.filter(function (i) { return i.giverId === me.id; });
+    var reqs = vis.filter(function (i) { return i.giverId !== me.id && (i.requesters || []).indexOf(me.id) !== -1; });
+    $('mine-posts').innerHTML = mine.length ? mine.map(cardHtml).join('') : '<div class="empty" style="padding:20px 0;">아직 올린 글이 없어요.</div>';
+    $('mine-reqs').innerHTML = reqs.length ? reqs.map(cardHtml).join('') : '<div class="empty" style="padding:20px 0;">신청한 글이 없어요.</div>';
+  }
+  function renderAdmin() {
+    if (!isAdmin) return;
+    var ib = $('admin-items'), ub = $('admin-users');
+    ib.innerHTML = items.length ? items.map(function (i) {
+      return '<div class="admin-list-item"><div class="grow"><strong>[' + (i.category === 'ask' ? '요청' : '나눔') + '] ' + esc(i.title) + '</strong><br/><span style="font-size:11px; color:#888;">작성: ' + esc(i.giverId) + (i.status === 'matched' ? ' · 매칭완료' : '') + '</span></div><button class="danger-btn" data-act="admin-del" data-id="' + esc(i.id) + '">삭제</button></div>';
+    }).join('') : '<div class="muted">등록된 글이 없어요.</div>';
+    var us = users.slice().sort(function (a, b) { return (a.num || 0) - (b.num || 0); });
+    ub.innerHTML = us.length ? us.map(function (u) {
+      return '<div class="admin-list-item"><div class="grow">👤 <strong>' + esc(u.id) + '</strong>' + (u.blocked ? ' <span style="color:#B34A4A; font-weight:bold;">[퇴출됨]</span>' : '') + '</div><button class="danger-btn" style="background:' + (u.blocked ? '#4C5C3E' : '#B34A4A') + ';" data-act="' + (u.blocked ? 'admin-unblock' : 'admin-block') + '" data-who="' + esc(u.id) + '">' + (u.blocked ? '복구' : '퇴출') + '</button></div>';
+    }).join('') : '<div class="muted">유저가 없어요.</div>';
+  }
+
+  // ---------- 상세 ----------
+  function openDetail(id) { activeId = id; $('detail-modal').classList.add('show'); renderDetail(); }
+  function closeDetail() { activeId = null; $('detail-modal').classList.remove('show'); }
+  function renderDetail() {
+    var it = items.filter(function (x) { return x.id === activeId; })[0];
+    if (!it || expired(it)) { closeDetail(); return; }
+    var mode = it.category === 'ask' ? 'ask' : 'give', matched = it.status === 'matched';
+    var isMine = it.giverId === me.id, reqs = it.requesters || [], applied = reqs.indexOf(me.id) !== -1;
+    $('d-title').textContent = it.title;
+    $('d-desc').textContent = it.desc || '상세 설명이 없습니다.';
+    $('d-giver').textContent = it.giverId;
+    $('d-badge').innerHTML = '<span class="badge ' + (matched ? 'matched' : mode) + '">' + (matched ? '매칭완료' : (mode === 'give' ? '나눠요' : '필요해요')) + '</span>';
+    var img = safeImg(it.image);
+    $('d-image').innerHTML = img ? '<img class="detail-img" src="' + esc(img) + '" alt="" />' : '';
+
+    var h = '';
+    if (!matched) {
+      if (mode === 'give') {
+        if (isMine) {
+          h += '<div class="form-label">신청한 분 (' + reqs.length + '명)</div>';
+          h += reqs.length ? reqs.map(function (r) { return '<div class="applicant-row"><span>👤 ' + esc(r) + '</span><button class="select-btn" data-act="pick" data-id="' + esc(it.id) + '" data-who="' + esc(r) + '">이분께 나눔</button></div>'; }).join('') : '<div class="muted">아직 신청한 분이 없어요.</div>';
+        } else if (applied) {
+          h += '<button class="cancel-btn wide" data-act="cancel-req" data-id="' + esc(it.id) + '">신청 취소하기</button>';
+        } else {
+          h += '<button class="select-btn wide" data-act="req" data-id="' + esc(it.id) + '">🙋 받고 싶어요 (' + reqs.length + '명 신청중)</button>';
+        }
+      } else {
+        if (!isMine) h += '<button class="select-btn wide" style="background:#856404;" data-act="req" data-id="' + esc(it.id) + '">🎁 제가 나눠드릴게요</button>';
+        else h += '<div class="muted">나눠주실 분이 버튼을 누르면 바로 매칭돼요.</div>';
+      }
+      if (isMine) h += '<button class="cancel-btn wide" style="margin-top:10px;" data-act="del" data-id="' + esc(it.id) + '">' + (mode === 'give' ? '나눔 취소 (글 삭제)' : '요청 취소 (글 삭제)') + '</button>';
+    } else {
+      var giver = mode === 'give' ? it.giverId : it.partnerId, taker = mode === 'give' ? it.partnerId : it.giverId;
+      var days = it.matchedAt ? Math.max(0, Math.ceil((it.matchedAt + WEEK - Date.now()) / 86400000)) : 7;
+      h += '<div class="match-box">🎉 매칭 완료!<br/>나누는 분: <b>' + esc(giver) + '</b> → 받는 분: <b>' + esc(taker) + '</b><br/><span style="font-size:12px; color:#6b8559;">이 글은 약 ' + days + '일 뒤 자동 삭제돼요.</span></div>';
+      if (isMine) h += '<button class="cancel-btn wide" style="margin-top:10px;" data-act="del" data-id="' + esc(it.id) + '">글 삭제</button>';
+    }
+    $('d-actions').innerHTML = h;
+  }
+
+  // ---------- 동작 ----------
+  function guard() { if (me.blocked) { toast('이용이 제한된 계정입니다.'); return true; } if (!db || !me.id) { toast('아직 서버에 연결되지 않았어요.'); return true; } return false; }
+  function run(p) { return Promise.resolve(p).catch(function (e) { console.error(e); toast(errMsg(e)); }); }
+
+  function requestItem(id) {
+    if (guard()) return;
+    var ref = db.collection('items').doc(id);
+    run(db.runTransaction(function (tx) {
+      return tx.get(ref).then(function (s) {
+        if (!s.exists) throw new Error('gone');
+        var d = s.data();
+        if (d.status !== 'open') throw new Error('closed');
+        if (d.giverId === me.id) throw new Error('mine');
+        if (d.category === 'ask') tx.update(ref, { status: 'matched', partnerId: me.id, requesters: FV.arrayUnion(me.id), matchedAt: Date.now() });
+        else tx.update(ref, { requesters: FV.arrayUnion(me.id) });
+        return d.category;
+      });
+    }).then(function (cat) { toast(cat === 'ask' ? '매칭이 완료되었어요! 🎉' : '신청했어요.'); }));
+  }
+  function cancelRequest(id) {
+    if (guard()) return;
+    run(db.collection('items').doc(id).update({ requesters: FV.arrayRemove(me.id) }).then(function () { toast('신청을 취소했어요.'); }));
+  }
+  function pickApplicant(id, who) {
+    if (guard()) return;
+    var ref = db.collection('items').doc(id);
+    run(db.runTransaction(function (tx) {
+      return tx.get(ref).then(function (s) {
+        if (!s.exists) throw new Error('gone');
+        var d = s.data();
+        if (d.status !== 'open') throw new Error('closed');
+        if (d.giverId !== me.id) throw new Error('mine');
+        if ((d.requesters || []).indexOf(who) === -1) throw new Error('noapplicant');
+        tx.update(ref, { status: 'matched', partnerId: who, matchedAt: Date.now() });
+      });
+    }).then(function () { toast('매칭이 완료되었어요! 🎉'); }));
+  }
+  function deletePost(id, byAdmin) {
+    if (!confirm(byAdmin ? '이 글을 삭제할까요?' : '이 글을 삭제할까요? 되돌릴 수 없어요.')) return;
+    run(db.collection('items').doc(id).delete().then(function () { toast('삭제했어요.'); if (!byAdmin) closeDetail(); }));
+  }
+
+  // ---------- 글쓰기 ----------
+  function processImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        var c = document.createElement('canvas'); c.width = IMG_SIZE; c.height = IMG_SIZE;
+        var ctx = c.getContext('2d'), w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h);
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, IMG_SIZE, IMG_SIZE);
+        ctx.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, IMG_SIZE, IMG_SIZE);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('image')); };
+      img.src = url;
+    });
+  }
+  function currentMode() { return document.querySelector('input[name="form-mode"]:checked').value; }
+  function applyModeLabels() {
+    var give = currentMode() === 'give';
+    $('lbl-title').textContent = give ? '나눔할 물품 이름' : '필요한 물품 이름';
+    $('f-title').placeholder = give ? '예: 유아용 카시트' : '예: 신생아용 유모차';
+    $('lbl-desc').textContent = give ? '설명 (물건 상태 등)' : '설명 (필요한 이유, 사이즈 등)';
+    $('f-desc').placeholder = give ? '물건의 상태나 구체적인 수령 방법을 적어 주세요.' : '필요한 규격이나 사정을 적어 주세요.';
+    $('grp-image').style.display = give ? 'block' : 'none';
+  }
+  function submitPost() {
+    if (guard()) return;
+    var title = $('f-title').value.trim(), desc = $('f-desc').value.trim(), mode = currentMode();
+    if (!title) { toast('물품 이름을 입력해 주세요.'); return; }
+    var btn = $('submit-btn'); btn.disabled = true; btn.textContent = '🚀 등록 중...';
+    var data = { title: title, desc: desc, category: mode, giverId: me.id, requesters: [], partnerId: null, status: 'open', image: mode === 'give' ? pendingImage : '', createdAt: Date.now(), matchedAt: null };
+    db.collection('items').add(data).then(function () {
+      toast(mode === 'give' ? '🎁 나눔 글을 등록했어요!' : '🙏 요청 글을 등록했어요!');
+      $('f-title').value = ''; $('f-desc').value = ''; $('f-image').value = ''; pendingImage = ''; $('f-preview').style.display = 'none';
+      switchTab('browse');
+    }).catch(function (e) { console.error(e); toast(errMsg(e)); }).then(function () { btn.disabled = false; btn.textContent = '등록하기'; });
+  }
+
+  // ---------- 관리자 ----------
+  function openGate() { $('gate-input').value = ''; $('gate-modal').classList.add('show'); setTimeout(function () { $('gate-input').focus(); }, 50); }
+  function closeGate() { $('gate-modal').classList.remove('show'); $('gate-input').value = ''; }
+  function submitGate() {
+    if (!db) { toast('서버에 연결된 뒤에 사용할 수 있어요.'); return; }
+    var pin = $('gate-input').value;
+    if (!pin) return;
+    Promise.all([hashPin(pin), getPinHash()]).then(function (r) {
+      if (r[0] === r[1]) { isAdmin = true; closeGate(); switchTab('admin'); }
+      else { $('gate-input').value = ''; toast('비밀번호가 맞지 않아요.'); }
+    }).catch(function (e) { toast(errMsg(e)); });
+  }
+  function savePin() {
+    var a = $('pin-new').value, b = $('pin-new2').value;
+    if (a.length < 4) { toast('4자 이상으로 입력해 주세요.'); return; }
+    if (a !== b) { toast('두 비밀번호가 달라요.'); return; }
+    hashPin(a).then(function (h) { return db.collection('meta').doc('admin').set({ pinHash: h }); })
+      .then(function () { $('pin-modal').classList.remove('show'); toast('비밀번호를 변경했어요.'); })
+      .catch(function (e) { toast(errMsg(e)); });
+  }
+  function setBlocked(who, v) {
+    if (!v || confirm(who + ' 님을 퇴출할까요? (글쓰기·신청이 막히고 접속 화면이 제한돼요)')) run(db.collection('users').doc(who).update({ blocked: v }));
+  }
+  function wipe(name) {
+    return db.collection(name).get().then(function (snap) {
+      var docs = snap.docs, p = Promise.resolve();
+      for (var i = 0; i < docs.length; i += 400) (function (chunk) {
+        p = p.then(function () { var b = db.batch(); chunk.forEach(function (d) { b.delete(d.ref); }); return b.commit(); });
+      })(docs.slice(i, i + 400));
+      return p;
+    });
+  }
+  function resetAll() {
+    if (!confirm('모든 글과 유저 기록을 삭제하고 "선민1"부터 다시 시작합니다.\n되돌릴 수 없어요. 계속할까요?')) return;
+    if (!confirm('정말 전체 초기화할까요?')) return;
+    var ref = db.collection('meta').doc('counter');
+    run(wipe('items').then(function () { return wipe('users'); }).then(function () { return ref.get(); }).then(function (s) {
+      var ep = (s.exists ? (s.data().epoch || 1) : 1) + 1;
+      return ref.set({ n: 0, epoch: ep });
+    }).then(function () { lsDel('sm_id'); lsDel('sm_epoch'); lsDel('sm_notify'); isAdmin = false; window.location.reload(); }));
+  }
+
+  // ---------- 이벤트 ----------
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest ? e.target.closest('[data-act]') : null; if (!el) return;
+    var a = el.getAttribute('data-act'), id = el.getAttribute('data-id'), who = el.getAttribute('data-who');
+    switch (a) {
+      case 'tab': switchTab(el.getAttribute('data-tab')); break;
+      case 'open': openDetail(id); break;
+      case 'close-detail': closeDetail(); break;
+      case 'bg-detail': if (e.target === el) closeDetail(); break;
+      case 'req': requestItem(id); break;
+      case 'cancel-req': cancelRequest(id); break;
+      case 'pick': pickApplicant(id, who); break;
+      case 'del': deletePost(id, false); break;
+      case 'toggle-done': showDone = !showDone; renderBrowse(); break;
+      case 'bell': toggleNotify(); break;
+      case 'submit': submitPost(); break;
+      case 'gate': if (isAdmin) switchTab('admin'); else openGate(); break;
+      case 'gate-ok': submitGate(); break;
+      case 'gate-cancel': closeGate(); break;
+      case 'exit': isAdmin = false; switchTab('browse'); toast('관리자 메뉴를 나왔어요. 다시 들어가려면 비밀번호가 필요해요.'); break;
+      case 'change-pin': $('pin-new').value = ''; $('pin-new2').value = ''; $('pin-modal').classList.add('show'); break;
+      case 'pin-save': savePin(); break;
+      case 'pin-cancel': $('pin-modal').classList.remove('show'); break;
+      case 'admin-del': deletePost(id, true); break;
+      case 'admin-block': setBlocked(who, true); break;
+      case 'admin-unblock': setBlocked(who, false); break;
+      case 'reset': resetAll(); break;
+    }
+  });
+  $('gate-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') submitGate(); });
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="form-mode"]'), function (r) { r.addEventListener('change', applyModeLabels); });
+  $('f-image').addEventListener('change', function () {
+    var f = this.files && this.files[0]; pendingImage = ''; $('f-preview').style.display = 'none';
+    if (!f) return;
+    processImage(f).then(function (d) { pendingImage = d; $('f-preview').src = d; $('f-preview').style.display = 'block'; })
+      .catch(function () { $('f-image').value = ''; toast('이 사진은 사용할 수 없어요. 다른 사진을 선택해 주세요.'); });
+  });
+
+  applyModeLabels();
+  updateBell();
+  start();
+})();
 </script>
 </body>
 </html>

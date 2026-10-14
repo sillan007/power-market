@@ -4,6 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>나눔의 자리</title>
+<meta name="theme-color" content="#8B7E66" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@600&display=swap" rel="stylesheet" />
 <style>
@@ -194,25 +199,18 @@
 <div id="blocked"><div>🚫 이용이 제한된 계정입니다.<br /><span style="font-size:13px; font-weight:400;">문의는 교회 행정실로 해 주세요.</span></div></div>
 <div id="toast" class="toast"></div>
 
+<script src="config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 (function () {
   'use strict';
 
-  // ============================================================
-  // ★ 1) 여기에 Firebase 콘솔의 "웹 앱 설정값"을 붙여넣으세요.
-  //    (프로젝트 설정 → 일반 → 내 앱 → SDK 설정 및 구성)
-  // ============================================================
-  var FIREBASE_CONFIG = {
-   apiKey: "AIzaSyAfizlzLBNDRHwzEkSpJ35mSJAKvbuw6uo",
-    authDomain: "power-market-f9573.firebaseapp.com",
-    projectId: "power-market-f9573",
-    storageBucket: "power-market-f9573.firebasestorage.app",
-    messagingSenderId: "1005808106144",
-    appId: "1:1005808106144:web:faef2e17c612833aec67c5",
-    measurementId: "G-59F20MY2ST"
-  };
+  // 설정값은 config.js 에서 읽어 옵니다. (Firebase 설정, 푸시 서버 주소, 공개 키)
+  var CFG = window.APP_CONFIG || {};
+  var FIREBASE_CONFIG = CFG.firebase || {};
+  var WORKER_URL = String(CFG.workerUrl || '').replace(/\/+$/, '');
+  var VAPID_PUBLIC_KEY = String(CFG.vapidPublicKey || '');
 
   var DEFAULT_PIN = '1234';          // 처음 한 번만 쓰는 기본 관리자 비밀번호 (진입 후 꼭 변경하세요)
   var WEEK = 7 * 24 * 60 * 60 * 1000; // 매칭 후 자동 삭제까지의 시간
@@ -222,6 +220,7 @@
   var me = { id: null, epoch: 1, blocked: false };
   var items = [], users = [];
   var tab = 'browse', showDone = false, isAdmin = false, activeId = null;
+  var pushSynced = false;
   var pendingImage = '', firstSnap = true, startedAt = Date.now(), lastCleanup = 0;
 
   function $(id) { return document.getElementById(id); }
@@ -267,8 +266,8 @@
   // ---------- 시작 ----------
   function start() {
     if (typeof firebase === 'undefined') { banner('Firebase 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 새로고침해 주세요.'); $('browse-list').innerHTML = ''; return; }
-    if (!FIREBASE_CONFIG.projectId || /^YOUR_/.test(FIREBASE_CONFIG.projectId)) {
-      banner('⚠️ Firebase 설정값이 아직 입력되지 않았어요.\nindex.html 안의 FIREBASE_CONFIG 부분에 Firebase 콘솔의 설정값을 붙여넣어 주세요.');
+    if (!FIREBASE_CONFIG.projectId || /^YOUR_/.test(FIREBASE_CONFIG.projectId) || !FIREBASE_CONFIG.apiKey || /^YOUR_/.test(FIREBASE_CONFIG.apiKey)) {
+      banner('⚠️ Firebase 설정값이 아직 입력되지 않았어요.\nconfig.js 파일의 firebase 부분(apiKey, appId 등)에 Firebase 콘솔의 설정값을 붙여넣어 주세요. config.js 파일이 index.html 과 같은 폴더에 올라가 있는지도 확인해 주세요.');
       $('browse-list').innerHTML = ''; return;
     }
     try {
@@ -360,6 +359,7 @@
       var mine = users.filter(function (u) { return u.id === me.id; })[0];
       me.blocked = !!(mine && mine.blocked);
       $('blocked').style.display = me.blocked ? 'flex' : 'none';
+      if (!pushSynced) { pushSynced = true; syncPush(); }
       if (tab === 'admin') renderAdmin();
     }, onWatchError);
 
@@ -385,20 +385,87 @@
   }
   function visibleItems() { return items.filter(function (it) { return !expired(it); }); }
 
-  // ---------- 새 글 알림 ----------
+  // ---------- 새 글 알림 (웹 푸시: 앱이 꺼져 있어도 핸드폰 상단에 알림창이 떠요) ----------
   function isNotifyOn() { return lsGet('sm_notify') === '1'; }
   function updateBell() { var b = $('bell-btn'); if (!b) return; var on = isNotifyOn(); b.textContent = on ? '🔔 새 글 알림 켜짐' : '🔕 새 글 알림 받기'; b.className = 'tool-btn' + (on ? ' on' : ''); }
   function setUserNotify(v) { if (db && me.id) return db.collection('users').doc(me.id).update({ notify: v }).catch(function () {}); return Promise.resolve(); }
-  function toggleNotify() {
-    if (isNotifyOn()) { lsSet('sm_notify', '0'); setUserNotify(false); updateBell(); toast('새 글 알림을 껐어요.'); return; }
-    var ask = (window.Notification && Notification.permission === 'default') ? Notification.requestPermission() : Promise.resolve(window.Notification ? Notification.permission : 'denied');
-    Promise.resolve(ask).then(function (p) {
-      lsSet('sm_notify', '1'); setUserNotify(true); updateBell();
-      toast(p === 'granted' ? '새 글이 올라오면 알려드릴게요.' : '화면 안내 알림으로 알려드릴게요. (브라우저 알림은 허용되지 않았어요)');
+  function pushSupported() { return !!(WORKER_URL && VAPID_PUBLIC_KEY && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window); }
+  function pushActive() { return pushSupported() && isNotifyOn(); }
+  function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function isStandalone() { return window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); }
+  function b64uToBytes(str) {
+    var p = '='.repeat((4 - str.length % 4) % 4), raw = atob((str + p).replace(/-/g, '+').replace(/_/g, '/')), out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+  function bytesToB64u(bytes) { var s = ''; for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function getReg() { return navigator.serviceWorker.register('sw.js').then(function () { return navigator.serviceWorker.ready; }); }
+  function subscribePush(reg) {
+    return reg.pushManager.getSubscription().then(function (s) {
+      if (!s) return null;
+      var cur = s.options && s.options.applicationServerKey ? bytesToB64u(new Uint8Array(s.options.applicationServerKey)) : '';
+      if (!cur || cur === VAPID_PUBLIC_KEY) return s;
+      return s.unsubscribe().then(function () { return null; });   // 키가 바뀌었으면 새로 구독
+    }).then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(VAPID_PUBLIC_KEY) }); });
+  }
+  function savePushSub(sub) { return db.collection('users').doc(me.id).update({ pushSub: JSON.stringify(sub.toJSON()), notify: true }); }
+  function enablePush() {
+    return Promise.resolve(Notification.requestPermission()).then(function (perm) {
+      if (perm !== 'granted') { toast('알림이 허용되지 않았어요. 브라우저(휴대폰) 설정에서 이 앱의 알림을 허용해 주세요.'); return false; }
+      return getReg().then(subscribePush).then(savePushSub).then(function () { lsSet('sm_notify', '1'); return true; });
     });
   }
+  function disablePush() {
+    return getReg().then(function (reg) { return reg.pushManager.getSubscription(); })
+      .then(function (s) { return s ? s.unsubscribe() : null; }).catch(function () {})
+      .then(function () { return db.collection('users').doc(me.id).update({ pushSub: FV.delete(), notify: false }).catch(function () {}); });
+  }
+  function toggleNotify() {
+    if (!db || !me.id) { toast('아직 서버에 연결되지 않았어요.'); return; }
+    if (isNotifyOn()) {
+      lsSet('sm_notify', '0'); updateBell();
+      (pushSupported() ? disablePush() : setUserNotify(false)).then(function () { toast('새 글 알림을 껐어요.'); });
+      return;
+    }
+    if (WORKER_URL && isIOS() && !isStandalone()) {
+      alert('아이폰은 먼저 앱처럼 설치해야 알림을 받을 수 있어요.\n\n1) 사파리로 이 주소를 엽니다\n2) 아래 공유 버튼(□↑) → "홈 화면에 추가"\n3) 홈 화면에 생긴 "나눔" 아이콘으로 다시 열어서\n4) 이 알림 버튼을 눌러 주세요.\n\n(아이폰 iOS 16.4 이상 필요)');
+      return;
+    }
+    if (pushSupported()) {
+      enablePush().then(function (ok) { if (ok) { updateBell(); toast('알림을 켰어요. 새 글이 올라오면 핸드폰에 알림이 떠요.'); } })
+        .catch(function (e) { console.error(e); toast('알림을 켜지 못했어요. 브라우저가 푸시 알림을 지원하는지 확인해 주세요.'); });
+      return;
+    }
+    // 푸시 서버가 아직 설정되지 않았거나 지원되지 않는 브라우저: 앱이 열려 있을 때만 화면으로 안내
+    lsSet('sm_notify', '1'); setUserNotify(true); updateBell();
+    toast('앱이 열려 있을 때만 새 글을 알려드려요.');
+  }
+  // 앱을 열 때마다: 알림 구독이 살아 있는지 확인하고 서버에 최신 주소를 저장
+  function syncPush() {
+    if (!pushSupported() || !isNotifyOn()) return;
+    if (Notification.permission !== 'granted') { lsSet('sm_notify', '0'); updateBell(); return; }
+    getReg().then(subscribePush).then(function (sub) {
+      var mine = users.filter(function (u) { return u.id === me.id; })[0], js = JSON.stringify(sub.toJSON());
+      if (!mine || mine.pushSub !== js) return savePushSub(sub);
+    }).catch(function (e) { console.warn('push sync', e); });
+  }
+  // 새 글을 올린 직후: 알림을 켜 둔 다른 사람들에게 푸시를 보내도록 서버에 요청 (2명씩 나눠서)
+  function sendPushes(itemId) {
+    if (!WORKER_URL) return;
+    var ids = users.filter(function (u) { return u.pushSub && !u.blocked && u.id !== me.id; }).map(function (u) { return u.id; });
+    var chunks = [], idx = 0, i;
+    for (i = 0; i < ids.length; i += 2) chunks.push(ids.slice(i, i + 2));
+    function lane() {
+      if (idx >= chunks.length) return;
+      var c = chunks[idx++];
+      fetch(WORKER_URL + '/notify', { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify({ itemId: itemId, ids: c }) })
+        .catch(function () {}).then(lane);
+    }
+    for (i = 0; i < 3; i++) lane();
+  }
+  // 푸시를 쓰지 않는 환경에서만: 앱이 열려 있을 때 화면 안내
   function notifyNew(it) {
-    if (!isNotifyOn() || it.giverId === me.id || (it.createdAt && it.createdAt < startedAt)) return;
+    if (!isNotifyOn() || pushActive() || it.giverId === me.id || (it.createdAt && it.createdAt < startedAt)) return;
     var msg = (it.category === 'ask' ? '🙏 새 요청: ' : '🎁 새 나눔: ') + it.title;
     toast(msg);
     try { if (window.Notification && Notification.permission === 'granted') new Notification('나눔의 자리', { body: msg }); } catch (e) {}
@@ -566,7 +633,8 @@
     if (!title) { toast('물품 이름을 입력해 주세요.'); return; }
     var btn = $('submit-btn'); btn.disabled = true; btn.textContent = '🚀 등록 중...';
     var data = { title: title, desc: desc, category: mode, giverId: me.id, requesters: [], partnerId: null, status: 'open', image: mode === 'give' ? pendingImage : '', createdAt: Date.now(), matchedAt: null };
-    db.collection('items').add(data).then(function () {
+    db.collection('items').add(data).then(function (ref) {
+      if (ref && ref.id) sendPushes(ref.id);
       toast(mode === 'give' ? '🎁 나눔 글을 등록했어요!' : '🙏 요청 글을 등록했어요!');
       $('f-title').value = ''; $('f-desc').value = ''; $('f-image').value = ''; pendingImage = ''; $('f-preview').style.display = 'none';
       switchTab('browse');
